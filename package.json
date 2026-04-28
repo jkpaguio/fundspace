@@ -8,9 +8,12 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "cap:sync": "cap sync",
+    "cap:open": "cap open"
   },
   "dependencies": {
+    "@capacitor/core": "^8.3.1",
     "@radix-ui/react-slot": "^1.2.4",
     "@supabase/supabase-js": "^2.105.0",
     "@tailwindcss/vite": "^4.2.4",
@@ -25,6 +28,7 @@
     "tailwindcss": "^4.2.4"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.3.1",
     "@eslint/js": "^10.0.1",
     "@types/node": "^24.12.2",
     "@types/react": "^19.2.14",
