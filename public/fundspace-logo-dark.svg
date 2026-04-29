@@ -1,0 +1,55 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Fundspace Logo - Dark Mode</title>
+  <desc id="desc">Modern vector logo for Fundspace, a financial workspace app for budgeting, accounts, savings, business profit, and money tracking.</desc>
+  <defs>
+    <linearGradient id="bgDark" x1="122" y1="84" x2="894" y2="932" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#020617"/>
+      <stop offset="1" stop-color="#052E16"/>
+    </linearGradient>
+    <linearGradient id="greenGrad" x1="258" y1="220" x2="772" y2="804" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#86EFAC"/>
+      <stop offset="1" stop-color="#22C55E"/>
+    </linearGradient>
+    <linearGradient id="blueGrad" x1="286" y1="672" x2="730" y2="328" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#38BDF8"/>
+      <stop offset="1" stop-color="#60A5FA"/>
+    </linearGradient>
+    <filter id="glow" x="88" y="88" width="848" height="848" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="32" stdDeviation="38" flood-color="#22C55E" flood-opacity="0.24"/>
+    </filter>
+  </defs>
+
+  <rect x="64" y="64" width="896" height="896" rx="224" fill="url(#bgDark)"/>
+  <rect x="88" y="88" width="848" height="848" rx="204" stroke="#134E4A" stroke-width="24"/>
+
+  <g filter="url(#glow)">
+    <circle cx="512" cy="512" r="284" fill="#0F172A"/>
+    <circle cx="512" cy="512" r="252" fill="#111827" stroke="#14532D" stroke-width="18"/>
+  </g>
+
+  <!-- Wallet / workspace base -->
+  <path d="M318 414C318 377.549 347.549 348 384 348H680C714.242 348 742 375.758 742 410V644C742 678.242 714.242 706 680 706H384C347.549 706 318 676.451 318 640V414Z" fill="#020617"/>
+  <path d="M356 414C356 398.536 368.536 386 384 386H662C678.569 386 692 399.431 692 416V438H356V414Z" fill="url(#greenGrad)"/>
+  <path d="M356 438H742V636C742 674.66 710.66 706 672 706H386C369.431 706 356 692.569 356 676V438Z" fill="#0B1120"/>
+
+  <!-- Card/account layers -->
+  <rect x="386" y="472" width="188" height="34" rx="17" fill="#E2E8F0" opacity="0.92"/>
+  <rect x="386" y="532" width="142" height="24" rx="12" fill="#94A3B8" opacity="0.78"/>
+  <rect x="386" y="578" width="106" height="24" rx="12" fill="#64748B" opacity="0.78"/>
+
+  <!-- Coin / savings bucket -->
+  <circle cx="666" cy="572" r="64" fill="url(#greenGrad)"/>
+  <path d="M666 526V618" stroke="#052E16" stroke-width="20" stroke-linecap="round"/>
+  <path d="M638 548C638 535.85 649.85 526 666 526C682.15 526 694 535.85 694 548C694 562.5 681 568 666 572C651 576 638 581.5 638 596C638 608.15 649.85 618 666 618C682.15 618 694 608.15 694 596" stroke="#052E16" stroke-width="18" stroke-linecap="round"/>
+
+  <!-- Financial growth line -->
+  <path d="M306 668L424 552L514 612L696 430" stroke="url(#blueGrad)" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="306" cy="668" r="20" fill="#38BDF8" stroke="#0F172A" stroke-width="10"/>
+  <circle cx="424" cy="552" r="20" fill="#38BDF8" stroke="#0F172A" stroke-width="10"/>
+  <circle cx="514" cy="612" r="20" fill="#38BDF8" stroke="#0F172A" stroke-width="10"/>
+  <circle cx="696" cy="430" r="20" fill="#60A5FA" stroke="#0F172A" stroke-width="10"/>
+
+  <!-- Spark / profit indicator -->
+  <path d="M722 326V378" stroke="#FBBF24" stroke-width="18" stroke-linecap="round"/>
+  <path d="M696 352H748" stroke="#FBBF24" stroke-width="18" stroke-linecap="round"/>
+</svg>

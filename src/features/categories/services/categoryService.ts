@@ -35,3 +35,36 @@ export async function createCategory(input: {
     throw error
   }
 }
+
+export async function updateCategory(input: {
+  categoryId: string
+  color: string
+  name: string
+  type: CategoryType
+}) {
+  const { error } = await supabase
+    .from('categories')
+    .update({
+      color: input.color,
+      name: input.name,
+      type: input.type,
+    })
+    .eq('id', input.categoryId)
+    .eq('is_default', false)
+
+  if (error) {
+    throw error
+  }
+}
+
+export async function archiveCategory(categoryId: string) {
+  const { error } = await supabase
+    .from('categories')
+    .update({ is_archived: true })
+    .eq('id', categoryId)
+    .eq('is_default', false)
+
+  if (error) {
+    throw error
+  }
+}

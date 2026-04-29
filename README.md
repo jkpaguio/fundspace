@@ -1,73 +1,126 @@
-# React + TypeScript + Vite
+# FundSpace
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+FundSpace is a mobile-first financial operations app built for:
 
-Currently, two official plugins are available:
+- personal finance
+- shared or family finance
+- small business and side hustle tracking
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+The project is being built in phases on top of React, Vite, TypeScript, Tailwind-style utility patterns, and Supabase.
 
-## React Compiler
+## Current scope
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Implemented so far:
 
-## Expanding the ESLint configuration
+- authentication screens and session flow
+- workspace creation, switching, invite acceptance, and role updates
+- accounts and categories
+- transactions, transfers, and dashboard summaries
+- savings buckets and budgets
+- activity log and member spending report
+- recurring templates
+- debts and debt payments
+- business costing, sales, business expenses, P&L, and ROI views
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+Current milestone focus:
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+- usability and process cleanup
+- guided Home experience
+- simplified daily navigation
+- Quick Add flow for common money movement
+- clearer user-facing "space" language for personal, family, shared, and business contexts
+- calm premium UI polish across mobile and desktop
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+Still pending:
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+- CSV export
+- AI insights via Supabase Edge Functions
+- smart recommendations
+- Android packaging verification
+
+## Stack
+
+- React 19
+- Vite 8
+- TypeScript
+- `react-router-dom`
+- `lucide-react`
+- `sonner`
+- Supabase
+- Bun
+
+## Project structure
+
+```txt
+src/
+|-- app/
+|-- components/
+|-- constants/
+|-- features/
+|-- hooks/
+|-- lib/
+`-- types/
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Planning and development guides live in `tmp/`.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+Key files:
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+- `tmp/financial_app_development_plan.md`
+- `tmp/development_progress_checklist.md`
+- `tmp/ai_development_guidelines.md`
+- `tmp/milestone_3_checklist.md`
+- `tmp/milestone_2_checklist.md`
+- `tmp/archive_delete_behavior.md`
+
+## Local setup
+
+1. Install dependencies:
+
+```bash
+bun install
 ```
+
+2. Create local environment values in `.env`.
+
+Expected client variables:
+
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_ANON_KEY`
+
+3. Run the app:
+
+```bash
+bun run dev
+```
+
+## Verification
+
+Useful commands:
+
+```bash
+bun run lint
+bunx tsc -b
+bun run build
+```
+
+## Environment note
+
+As of April 29, 2026, the current workspace verifies cleanly with:
+
+- `bun run lint`
+- `bunx tsc -b`
+
+`bun run build` is currently blocked by the local Node version. Vite 8 requires Node `20.19+` or `22.12+`, while this workspace is on Node `20.18.1`.
+
+## Archive policy
+
+FundSpace prefers archive over delete for important financial records.
+
+Supported archive flows currently exist for:
+
+- accounts
+- custom categories
+- savings buckets
+
+For ledger-affecting records, use correction or reversal workflows rather than direct deletion. See `tmp/archive_delete_behavior.md`.

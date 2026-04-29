@@ -32,7 +32,7 @@ export function LoginPage() {
 
   return (
     <AuthFormShell
-      description="Sign in to continue tracking your workspaces, balances, and money movement."
+      description="Sign in to continue tracking your spaces, balances, and money movement."
       eyebrow="Welcome back"
       footer={
         <>
@@ -42,7 +42,7 @@ export function LoginPage() {
           </span>
         </>
       }
-      title="Log in"
+      title="Sign in"
     >
       <form className="auth-form" onSubmit={handleSubmit}>
         <label className="field-group">

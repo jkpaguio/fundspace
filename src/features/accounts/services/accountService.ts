@@ -43,3 +43,32 @@ export async function createAccount(input: {
     throw error
   }
 }
+
+export async function updateAccount(input: {
+  accountId: string
+  name: string
+  type: AccountType
+}) {
+  const { error } = await supabase
+    .from('accounts')
+    .update({
+      name: input.name,
+      type: input.type,
+    })
+    .eq('id', input.accountId)
+
+  if (error) {
+    throw error
+  }
+}
+
+export async function archiveAccount(accountId: string) {
+  const { error } = await supabase
+    .from('accounts')
+    .update({ is_archived: true })
+    .eq('id', accountId)
+
+  if (error) {
+    throw error
+  }
+}

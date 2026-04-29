@@ -88,6 +88,30 @@ export async function createMoneyTransaction(input: {
   }
 }
 
+export async function createCorrectionTransaction(input: {
+  accountId: string
+  amount: number
+  categoryId: string | null
+  date: string
+  direction: 'in' | 'out'
+  notes: string
+  workspaceId: string
+}) {
+  const { error } = await supabase.rpc('create_money_transaction', {
+    target_account_id: input.accountId,
+    target_category_id: input.categoryId,
+    target_workspace_id: input.workspaceId,
+    transaction_amount: input.amount,
+    transaction_date: input.date,
+    transaction_notes: input.notes || null,
+    transaction_type: input.direction === 'in' ? 'adjustment' : 'expense',
+  })
+
+  if (error) {
+    throw error
+  }
+}
+
 export async function createTransferTransaction(input: {
   amount: number
   date: string

@@ -35,7 +35,7 @@ export function RegisterPage() {
 
   return (
     <AuthFormShell
-      description="Create your account before setting up your first personal workspace."
+      description="Create your account before setting up your first personal money space."
       eyebrow="Start clean"
       footer={
         <span>

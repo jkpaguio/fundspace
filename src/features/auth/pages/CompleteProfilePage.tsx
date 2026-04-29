@@ -17,21 +17,19 @@ export function CompleteProfilePage() {
     setError('')
     setIsSubmitting(true)
 
-    const { error: updateError } = await updateProfileName(fullName)
-
-    setIsSubmitting(false)
-
-    if (updateError) {
-      setError(updateError.message)
-      return
+    try {
+      await updateProfileName(fullName)
+      navigate(routes.workspace)
+    } catch (updateError) {
+      setError(updateError instanceof Error ? updateError.message : 'Unable to save profile.')
+    } finally {
+      setIsSubmitting(false)
     }
-
-    navigate(routes.workspace)
   }
 
   return (
     <AuthFormShell
-      description="Add the name shown in your personal and shared workspaces."
+      description="Add the name shown in your personal and shared spaces."
       eyebrow="Profile"
       footer="You can update this later in settings."
       title="Complete profile"

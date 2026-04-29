@@ -1,15 +1,18 @@
-import { useState, type FormEvent } from 'react'
-import { Plus, Users } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { ArrowRight, BriefcaseBusiness, CheckCircle2, Plus, Settings2 } from 'lucide-react'
+import { EmptyState } from '../../../components/common/EmptyState'
+import { PageHeader } from '../../../components/common/PageHeader'
 import { Button, Card, CardContent, CardHeader, Input } from '../../../components/ui'
-import { currencyOptions, workspaceTypeOptions } from '../../../constants/options'
-import { canManageWorkspaceMembers } from '../../../lib/permissions'
-import type { CurrencyCode, WorkspaceRole, WorkspaceType } from '../../../types/domain'
-import { addWorkspaceMember, createWorkspace } from '../services/workspaceService'
+import { workspaceTypeDescriptions } from '../../../constants/options'
+import { routes } from '../../../app/routes'
+import { useAuthSession } from '../../../hooks/useAuthSession'
 import { useWorkspaceOutlet } from '../../../hooks/useWorkspaceOutlet'
-
-const inviteRoleOptions: WorkspaceRole[] = ['admin', 'editor', 'viewer']
+import { acceptWorkspaceInvite } from '../services/workspaceService'
 
 export function WorkspacesPage() {
+  const navigate = useNavigate()
+  const { session } = useAuthSession()
   const {
     error,
     isLoading,
@@ -18,207 +21,258 @@ export function WorkspacesPage() {
     selectWorkspace,
     workspaces,
   } = useWorkspaceOutlet()
-  const [workspaceName, setWorkspaceName] = useState('')
-  const [workspaceType, setWorkspaceType] = useState<WorkspaceType>('personal')
-  const [currency, setCurrency] = useState<CurrencyCode>('PHP')
-  const [inviteUserId, setInviteUserId] = useState('')
-  const [inviteRole, setInviteRole] = useState<WorkspaceRole>('viewer')
+  const [searchTerm, setSearchTerm] = useState('')
   const [formError, setFormError] = useState('')
-  const [isCreating, setIsCreating] = useState(false)
-  const [isInviting, setIsInviting] = useState(false)
+  const [pendingWorkspaceId, setPendingWorkspaceId] = useState('')
+  const currentUserId = session?.user.id ?? ''
 
-  const selectedRole = selectedWorkspace?.membership?.role ?? null
-  const canInvite = canManageWorkspaceMembers(selectedRole)
+  const normalizedSearch = searchTerm.trim().toLowerCase()
+  const filteredWorkspaces = useMemo(
+    () =>
+      workspaces.filter((workspace) => {
+        if (normalizedSearch.length === 0) {
+          return true
+        }
 
-  const handleCreateWorkspace = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
+        return (
+          workspace.name.toLowerCase().includes(normalizedSearch)
+          || workspace.currency.toLowerCase().includes(normalizedSearch)
+          || workspace.type.replaceAll('_', ' ').toLowerCase().includes(normalizedSearch)
+        )
+      }),
+    [normalizedSearch, workspaces],
+  )
+
+  const ownedWorkspaces = useMemo(
+    () =>
+      filteredWorkspaces.filter((workspace) => workspace.owner_id === currentUserId),
+    [currentUserId, filteredWorkspaces],
+  )
+  const sharedWorkspaces = useMemo(
+    () =>
+      filteredWorkspaces.filter((workspace) => workspace.owner_id !== currentUserId),
+    [currentUserId, filteredWorkspaces],
+  )
+
+  const handleSelectWorkspace = (workspaceId: string) => {
+    selectWorkspace(workspaceId)
+    navigate(routes.dashboard)
+  }
+
+  const handleAcceptInvite = async (workspaceId: string) => {
     setFormError('')
-    setIsCreating(true)
+    setPendingWorkspaceId(workspaceId)
 
     try {
-      const workspace = await createWorkspace({
-        currency,
-        name: workspaceName,
-        type: workspaceType,
-      })
-      setWorkspaceName('')
+      await acceptWorkspaceInvite(workspaceId)
       await loadWorkspaces()
-      selectWorkspace(workspace.id)
-    } catch (createError) {
+      selectWorkspace(workspaceId)
+      navigate(routes.dashboard)
+    } catch (acceptError) {
       setFormError(
-        createError instanceof Error ? createError.message : 'Unable to create workspace.',
+        acceptError instanceof Error ? acceptError.message : 'Unable to accept invite.',
       )
     } finally {
-      setIsCreating(false)
+      setPendingWorkspaceId('')
     }
   }
 
-  const handleInviteMember = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-
-    if (!selectedWorkspace) {
-      return
-    }
-
-    setFormError('')
-    setIsInviting(true)
-
-    try {
-      await addWorkspaceMember({
-        role: inviteRole,
-        userId: inviteUserId,
-        workspaceId: selectedWorkspace.id,
-      })
-      setInviteUserId('')
-    } catch (inviteError) {
-      setFormError(
-        inviteError instanceof Error ? inviteError.message : 'Unable to invite member.',
-      )
-    } finally {
-      setIsInviting(false)
-    }
-  }
+  const hasNoSpaces = !isLoading && workspaces.length === 0
 
   return (
     <div className="page-stack">
-      <header className="page-header">
-        <div>
-          <p className="eyebrow">Workspace foundation</p>
-          <h1>Workspaces</h1>
-          <p className="lead">
-            Create isolated money spaces for personal, family, and business tracking.
-          </p>
-        </div>
-      </header>
+      <PageHeader
+        eyebrow="Select space"
+        heading="Choose a space to enter"
+        lead="Pick the money space you want to open. Space settings, members, and deeper management stay under Settings after you get inside."
+      />
 
       {(error || formError) && <p className="form-error">{error || formError}</p>}
 
-      <section className="content-grid">
-        <Card>
-          <CardHeader>
-            <Plus aria-hidden="true" size={20} />
-            <h2>Create workspace</h2>
-          </CardHeader>
-          <CardContent>
-            <form className="stack-form" onSubmit={handleCreateWorkspace}>
-              <label className="field-group">
-                Name
-                <Input
-                  onChange={(event) => setWorkspaceName(event.target.value)}
-                  placeholder="Personal Workspace"
-                  required
-                  value={workspaceName}
-                />
-              </label>
-
-              <label className="field-group">
-                Type
-                <select
-                  className="field-input"
-                  onChange={(event) => setWorkspaceType(event.target.value as WorkspaceType)}
-                  value={workspaceType}
-                >
-                  {workspaceTypeOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="field-group">
-                Currency
-                <select
-                  className="field-input"
-                  onChange={(event) => setCurrency(event.target.value as CurrencyCode)}
-                  value={currency}
-                >
-                  {currencyOptions.map((option) => (
-                    <option key={option} value={option}>
-                      {option}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <Button disabled={isCreating} type="submit">
+      {hasNoSpaces ? (
+        <EmptyState
+          action={
+            <Button asChild>
+              <Link to={routes.createWorkspace}>Create your first space</Link>
+            </Button>
+          }
+          description="Spaces keep personal, family, business, and side-hustle money separate. Start with one simple space, then add more later."
+          title="No space yet"
+        />
+      ) : (
+        <>
+          <section className="landing-action-row">
+            <Button asChild>
+              <Link to={routes.createWorkspace}>
                 <Plus aria-hidden="true" size={18} />
-                {isCreating ? 'Creating...' : 'Create workspace'}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+                Create space
+              </Link>
+            </Button>
+            <Button asChild variant="secondary">
+              <Link to={routes.settings}>
+                <Settings2 aria-hidden="true" size={18} />
+                Profile and settings
+              </Link>
+            </Button>
+          </section>
 
-        <Card>
-          <CardHeader>
-            <Users aria-hidden="true" size={20} />
-            <h2>Invite foundation</h2>
-          </CardHeader>
-          <CardContent>
-            <form className="stack-form" onSubmit={handleInviteMember}>
-              <label className="field-group">
-                User ID
-                <Input
-                  disabled={!canInvite || !selectedWorkspace}
-                  onChange={(event) => setInviteUserId(event.target.value)}
-                  placeholder="Supabase user uuid"
-                  required
-                  value={inviteUserId}
+          <section className="workspace-hero-grid">
+            <Card className="workspace-hero-card">
+              <CardHeader>
+                <BriefcaseBusiness aria-hidden="true" size={20} />
+                <h2>Your available spaces</h2>
+              </CardHeader>
+              <CardContent>
+                <div className="record-list">
+                  <div className="record-row">
+                    <span>
+                      <strong>{workspaces.length}</strong>
+                      <small>Total spaces you can access</small>
+                    </span>
+                    <span>{ownedWorkspaces.length} owned</span>
+                  </div>
+                  <div className="record-row">
+                    <span>
+                      <strong>{sharedWorkspaces.length}</strong>
+                      <small>Shared or invited spaces</small>
+                    </span>
+                    <span>{selectedWorkspace?.name ?? 'None selected'}</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </section>
+
+          <section className="list-panel">
+            <div className="section-heading">
+              <h2>Find a space</h2>
+              <span>{filteredWorkspaces.length} matches</span>
+            </div>
+
+            <Input
+              onChange={(event) => setSearchTerm(event.target.value)}
+              placeholder="Search by name, type, or currency"
+              value={searchTerm}
+            />
+          </section>
+
+          <section className="workspace-grid workspace-grid-wide">
+            <section className="list-panel">
+              <div className="section-heading">
+                <h2>Owned by you</h2>
+                <span>{ownedWorkspaces.length} spaces</span>
+              </div>
+
+              {ownedWorkspaces.length === 0 ? (
+                <EmptyState
+                  description={
+                    normalizedSearch
+                      ? 'Try a different search to bring your own spaces back into view.'
+                      : 'Create your first personal, family, business, or side-hustle space here.'
+                  }
+                  title={normalizedSearch ? 'No owned spaces match' : 'You have not created a space yet'}
                 />
-              </label>
+              ) : (
+                <div className="record-list">
+                  {ownedWorkspaces.map((workspace) => {
+                    const isSelected = selectedWorkspace?.id === workspace.id
 
-              <label className="field-group">
-                Role
-                <select
-                  className="field-input"
-                  disabled={!canInvite || !selectedWorkspace}
-                  onChange={(event) => setInviteRole(event.target.value as WorkspaceRole)}
-                  value={inviteRole}
-                >
-                  {inviteRoleOptions.map((role) => (
-                    <option key={role} value={role}>
-                      {role}
-                    </option>
-                  ))}
-                </select>
-              </label>
+                    return (
+                      <div
+                        className={`record-row workspace-select-row ${isSelected ? 'workspace-card-selected' : ''}`}
+                        key={workspace.id}
+                      >
+                        <span>
+                          <strong>{workspace.name}</strong>
+                          <small>
+                            {workspaceTypeDescriptions[workspace.type]} · {workspace.currency}
+                          </small>
+                        </span>
+                        <div className="workspace-select-actions">
+                          <div className="workspace-select-badges">
+                            <span className="badge">owner</span>
+                            {isSelected && (
+                              <span className="badge">
+                                <CheckCircle2 aria-hidden="true" size={14} />
+                                Active now
+                              </span>
+                            )}
+                          </div>
+                          <Button onClick={() => handleSelectWorkspace(workspace.id)} type="button">
+                            {isSelected ? 'Continue' : 'Select'}
+                            <ArrowRight aria-hidden="true" size={16} />
+                          </Button>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </section>
 
-              <Button disabled={!canInvite || isInviting || !selectedWorkspace} type="submit">
-                <Users aria-hidden="true" size={18} />
-                {isInviting ? 'Inviting...' : 'Add invited member'}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-      </section>
+            <section className="list-panel">
+              <div className="section-heading">
+                <h2>Shared with you</h2>
+                <span>{sharedWorkspaces.length} spaces</span>
+              </div>
 
-      <section className="list-panel">
-        <div className="section-heading">
-          <h2>Your workspaces</h2>
-          <span>{isLoading ? 'Loading' : `${workspaces.length} total`}</span>
-        </div>
+              {sharedWorkspaces.length === 0 ? (
+                <EmptyState
+                  description={
+                    normalizedSearch
+                      ? 'Try a different search to look for shared spaces again.'
+                      : 'Accepted invites will show up here so you can jump into spaces shared by family, teammates, or clients.'
+                  }
+                  title={normalizedSearch ? 'No shared spaces match' : 'No shared spaces yet'}
+                />
+              ) : (
+                <div className="record-list">
+                  {sharedWorkspaces.map((workspace) => {
+                    const isSelected = selectedWorkspace?.id === workspace.id
+                    const membershipStatus = workspace.membership?.status ?? 'active'
+                    const isInvited = membershipStatus === 'invited'
+                    const isPending = pendingWorkspaceId === workspace.id
 
-        {workspaces.length === 0 && !isLoading ? (
-          <p className="empty-state">Create your first workspace to unlock accounts and categories.</p>
-        ) : (
-          <div className="record-list">
-            {workspaces.map((workspace) => (
-              <button
-                className="record-row"
-                key={workspace.id}
-                onClick={() => selectWorkspace(workspace.id)}
-                type="button"
-              >
-                <span>
-                  <strong>{workspace.name}</strong>
-                  <small>{workspace.type.replace('_', ' ')} / {workspace.currency}</small>
-                </span>
-                <span className="badge">{workspace.membership?.role ?? 'member'}</span>
-              </button>
-            ))}
-          </div>
-        )}
-      </section>
+                    return (
+                      <div
+                        className={`record-row workspace-select-row ${isSelected ? 'workspace-card-selected' : ''}`}
+                        key={workspace.id}
+                      >
+                        <span>
+                          <strong>{workspace.name}</strong>
+                          <small>
+                            {workspaceTypeDescriptions[workspace.type]} · {workspace.currency}
+                          </small>
+                        </span>
+                        <div className="workspace-select-actions">
+                          <div className="workspace-select-badges">
+                            <span className="badge">{workspace.membership?.role ?? 'member'}</span>
+                            <span className="badge">{membershipStatus}</span>
+                          </div>
+                          {isInvited ? (
+                            <Button
+                              disabled={isPending}
+                              onClick={() => void handleAcceptInvite(workspace.id)}
+                              type="button"
+                            >
+                              {isPending ? 'Accepting...' : 'Accept and open'}
+                            </Button>
+                          ) : (
+                            <Button onClick={() => handleSelectWorkspace(workspace.id)} type="button">
+                              {isSelected ? 'Continue' : 'Select'}
+                              <ArrowRight aria-hidden="true" size={16} />
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </section>
+          </section>
+        </>
+      )}
     </div>
   )
 }

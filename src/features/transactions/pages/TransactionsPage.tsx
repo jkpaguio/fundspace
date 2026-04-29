@@ -1,14 +1,24 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
-import { ArrowRightLeft, Plus, ReceiptText } from 'lucide-react'
+import { ArrowRightLeft, Plus, ReceiptText, Save } from 'lucide-react'
+import { EmptyState } from '../../../components/common/EmptyState'
+import { PageHeader } from '../../../components/common/PageHeader'
 import { Button, Card, CardContent, CardHeader, Input } from '../../../components/ui'
 import { transactionTypeOptions } from '../../../constants/options'
 import { listAccounts } from '../../accounts/services/accountService'
 import { listCategories } from '../../categories/services/categoryService'
+import { listWorkspaceProfiles } from '../../workspaces/services/workspaceService'
 import { formatCurrency } from '../../../lib/formatCurrency'
 import { useWorkspaceOutlet } from '../../../hooks/useWorkspaceOutlet'
-import type { Account, Category, Transaction, TransactionType } from '../../../types/domain'
+import type {
+  Account,
+  Category,
+  Transaction,
+  TransactionType,
+  WorkspaceProfile,
+} from '../../../types/domain'
 import {
   createMoneyTransaction,
+  createCorrectionTransaction,
   createTransferTransaction,
   listTransactions,
   type TransactionFilter,
@@ -20,6 +30,7 @@ export function TransactionsPage() {
   const { selectedWorkspace } = useWorkspaceOutlet()
   const [accounts, setAccounts] = useState<Account[]>([])
   const [categories, setCategories] = useState<Category[]>([])
+  const [profiles, setProfiles] = useState<WorkspaceProfile[]>([])
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null)
   const [transactionType, setTransactionType] = useState<'income' | 'expense'>('expense')
@@ -33,12 +44,17 @@ export function TransactionsPage() {
   const [transferAmount, setTransferAmount] = useState('')
   const [transferDate, setTransferDate] = useState(today)
   const [transferNotes, setTransferNotes] = useState('')
+  const [correctionDirection, setCorrectionDirection] = useState<'in' | 'out'>('out')
+  const [correctionAmount, setCorrectionAmount] = useState('')
+  const [correctionDate, setCorrectionDate] = useState(today)
+  const [correctionNotes, setCorrectionNotes] = useState('')
   const [filterType, setFilterType] = useState<TransactionFilter['type']>('all')
   const [filterAccountId, setFilterAccountId] = useState('')
   const [filterSearch, setFilterSearch] = useState('')
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isCorrecting, setIsCorrecting] = useState(false)
 
   const filteredCategories = useMemo(
     () =>
@@ -64,14 +80,16 @@ export function TransactionsPage() {
         search: filterSearch || undefined,
         type: filterType,
       }
-      const [nextAccounts, nextCategories, nextTransactions] = await Promise.all([
+      const [nextAccounts, nextCategories, nextTransactions, nextProfiles] = await Promise.all([
         listAccounts(selectedWorkspace.id),
         listCategories(selectedWorkspace.id),
         listTransactions(selectedWorkspace.id, filter),
+        listWorkspaceProfiles(selectedWorkspace.id),
       ])
 
       setAccounts(nextAccounts)
       setCategories(nextCategories)
+      setProfiles(nextProfiles)
       setTransactions(nextTransactions)
 
       if (!accountId && nextAccounts[0]) {
@@ -161,6 +179,42 @@ export function TransactionsPage() {
     }
   }
 
+  const handleCreateCorrection = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+
+    if (!selectedWorkspace || !selectedTransaction) {
+      return
+    }
+
+    setIsCorrecting(true)
+    setError('')
+
+    try {
+      await createCorrectionTransaction({
+        accountId: selectedTransaction.account_id,
+        amount: Number(correctionAmount),
+        categoryId: selectedTransaction.category_id,
+        date: correctionDate,
+        direction: correctionDirection,
+        notes:
+          correctionNotes
+          || `Correction for ${selectedTransaction.notes || selectedTransaction.type.replace('_', ' ')}`,
+        workspaceId: selectedWorkspace.id,
+      })
+      setCorrectionAmount('')
+      setCorrectionNotes('')
+      await loadPageData()
+    } catch (correctionError) {
+      setError(
+        correctionError instanceof Error
+          ? correctionError.message
+          : 'Unable to create correction entry.',
+      )
+    } finally {
+      setIsCorrecting(false)
+    }
+  }
+
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
       void loadPageData()
@@ -171,20 +225,24 @@ export function TransactionsPage() {
 
   return (
     <div className="page-stack">
-      <header className="page-header">
-        <div>
-          <p className="eyebrow">Ledger</p>
-          <h1>Transactions</h1>
-          <p className="lead">Record income, expenses, and account transfers with auditable ledger rows.</p>
-        </div>
-      </header>
+      <PageHeader
+        eyebrow="Ledger"
+        heading="Transactions"
+        lead="Record income, expenses, and account transfers with auditable ledger rows."
+      />
 
       {error && <p className="form-error">{error}</p>}
 
       {!selectedWorkspace ? (
-        <p className="empty-state">Create a workspace before recording transactions.</p>
+        <EmptyState
+          description="Choose a space first so every ledger entry stays tied to the right money area."
+          title="Select a space before recording activity"
+        />
       ) : accounts.length === 0 && !isLoading ? (
-        <p className="empty-state">Add at least one account before recording income or expenses.</p>
+        <EmptyState
+          description="Create at least one account before recording income, expenses, or transfers."
+          title="Transactions need an account"
+        />
       ) : (
         <>
           <section className="content-grid">
@@ -400,12 +458,16 @@ export function TransactionsPage() {
             </div>
 
             {transactions.length === 0 && !isLoading ? (
-              <p className="empty-state">No transactions match the current filters.</p>
+              <EmptyState
+                description="Try clearing the filters or add your first transaction to start building the ledger history."
+                title="No transactions match right now"
+              />
             ) : (
               <div className="record-list">
                 {transactions.map((transaction) => {
                   const account = accounts.find((item) => item.id === transaction.account_id)
                   const category = categories.find((item) => item.id === transaction.category_id)
+                  const creator = profiles.find((profile) => profile.id === transaction.created_by)
 
                   return (
                     <button
@@ -418,7 +480,7 @@ export function TransactionsPage() {
                         <strong>{transaction.notes || transaction.type.replace('_', ' ')}</strong>
                         <small>
                           {transaction.transaction_date} / {account?.name ?? 'Account'} /{' '}
-                          {category?.name ?? 'No category'}
+                          {category?.name ?? 'No category'} / by {creator?.full_name || transaction.created_by}
                         </small>
                       </span>
                       <span className={transaction.direction === 'in' ? 'amount-in' : 'amount-out'}>
@@ -438,6 +500,9 @@ export function TransactionsPage() {
                 <p className="eyebrow">Transaction detail</p>
                 <h2>{selectedTransaction.type.replace('_', ' ')}</h2>
                 <p>{selectedTransaction.notes || 'No notes added.'}</p>
+                <p className="muted-note">
+                  Transactions are preserved for audit history. Use correcting entries or future reversal flows instead of deleting ledger rows.
+                </p>
               </div>
               <dl>
                 <div>
@@ -456,7 +521,64 @@ export function TransactionsPage() {
                   <dt>Reference group</dt>
                   <dd>{selectedTransaction.reference_group_id ?? 'Single transaction'}</dd>
                 </div>
+                <div>
+                  <dt>Created by</dt>
+                  <dd>
+                    {profiles.find((profile) => profile.id === selectedTransaction.created_by)?.full_name
+                      || selectedTransaction.created_by}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Updated at</dt>
+                  <dd>{new Date(selectedTransaction.updated_at).toLocaleString()}</dd>
+                </div>
               </dl>
+              <form className="stack-form correction-form" onSubmit={handleCreateCorrection}>
+                <p className="eyebrow">Correction entry</p>
+                <label className="field-group">
+                  Direction
+                  <select
+                    className="field-input"
+                    onChange={(event) => setCorrectionDirection(event.target.value as 'in' | 'out')}
+                    value={correctionDirection}
+                  >
+                    <option value="out">Decrease balance</option>
+                    <option value="in">Increase balance</option>
+                  </select>
+                </label>
+                <label className="field-group">
+                  Amount
+                  <Input
+                    min="0.01"
+                    onChange={(event) => setCorrectionAmount(event.target.value)}
+                    required
+                    step="0.01"
+                    type="number"
+                    value={correctionAmount}
+                  />
+                </label>
+                <label className="field-group">
+                  Date
+                  <Input
+                    onChange={(event) => setCorrectionDate(event.target.value)}
+                    required
+                    type="date"
+                    value={correctionDate}
+                  />
+                </label>
+                <label className="field-group">
+                  Notes
+                  <Input
+                    onChange={(event) => setCorrectionNotes(event.target.value)}
+                    placeholder="Explain the correction"
+                    value={correctionNotes}
+                  />
+                </label>
+                <Button disabled={isCorrecting} type="submit">
+                  <Save aria-hidden="true" size={18} />
+                  {isCorrecting ? 'Saving...' : 'Save correction'}
+                </Button>
+              </form>
             </section>
           )}
         </>

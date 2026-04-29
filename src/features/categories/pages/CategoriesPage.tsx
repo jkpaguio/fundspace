@@ -1,10 +1,17 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
-import { Plus } from 'lucide-react'
+import { Archive, Pencil, Plus, Save, X } from 'lucide-react'
 import { Button, Card, CardContent, CardHeader, Input } from '../../../components/ui'
 import { categoryTypeOptions } from '../../../constants/options'
 import type { Category, CategoryType } from '../../../types/domain'
 import { useWorkspaceOutlet } from '../../../hooks/useWorkspaceOutlet'
-import { createCategory, listCategories } from '../services/categoryService'
+import { archiveCategory, createCategory, listCategories, updateCategory } from '../services/categoryService'
+
+type CategoryEditDraft = {
+  categoryId: string
+  color: string
+  name: string
+  type: CategoryType
+}
 
 export function CategoriesPage() {
   const { selectedWorkspace } = useWorkspaceOutlet()
@@ -15,6 +22,9 @@ export function CategoriesPage() {
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
+  const [archivingCategoryId, setArchivingCategoryId] = useState('')
+  const [editingCategory, setEditingCategory] = useState<CategoryEditDraft | null>(null)
+  const [savingCategoryId, setSavingCategoryId] = useState('')
 
   const loadCategories = useCallback(async () => {
     if (!selectedWorkspace) {
@@ -59,6 +69,41 @@ export function CategoriesPage() {
     }
   }
 
+  const handleArchiveCategory = async (categoryId: string) => {
+    setArchivingCategoryId(categoryId)
+    setError('')
+
+    try {
+      await archiveCategory(categoryId)
+      await loadCategories()
+    } catch (archiveError) {
+      setError(
+        archiveError instanceof Error ? archiveError.message : 'Unable to archive category.',
+      )
+    } finally {
+      setArchivingCategoryId('')
+    }
+  }
+
+  const handleSaveCategory = async () => {
+    if (!editingCategory) {
+      return
+    }
+
+    setSavingCategoryId(editingCategory.categoryId)
+    setError('')
+
+    try {
+      await updateCategory(editingCategory)
+      setEditingCategory(null)
+      await loadCategories()
+    } catch (updateError) {
+      setError(updateError instanceof Error ? updateError.message : 'Unable to update category.')
+    } finally {
+      setSavingCategoryId('')
+    }
+  }
+
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
       void loadCategories()
@@ -80,7 +125,7 @@ export function CategoriesPage() {
       {error && <p className="form-error">{error}</p>}
 
       {!selectedWorkspace ? (
-        <p className="empty-state">Create a workspace before adding categories.</p>
+        <p className="empty-state">Create a space before adding categories.</p>
       ) : (
         <section className="content-grid">
           <Card>
@@ -144,17 +189,97 @@ export function CategoriesPage() {
               <div className="record-list">
                 {categories.map((category) => (
                   <div className="record-row" key={category.id}>
-                    <span>
-                      <strong>{category.name}</strong>
-                      <small>{category.type.replace('_', ' ')}</small>
-                    </span>
+                    {editingCategory?.categoryId === category.id ? (
+                      <span className="inline-edit-fields">
+                        <Input
+                          onChange={(event) =>
+                            setEditingCategory({ ...editingCategory, name: event.target.value })
+                          }
+                          required
+                          value={editingCategory.name}
+                        />
+                        <select
+                          className="field-input"
+                          onChange={(event) =>
+                            setEditingCategory({
+                              ...editingCategory,
+                              type: event.target.value as CategoryType,
+                            })
+                          }
+                          value={editingCategory.type}
+                        >
+                          {categoryTypeOptions.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                        <Input
+                          onChange={(event) =>
+                            setEditingCategory({ ...editingCategory, color: event.target.value })
+                          }
+                          type="color"
+                          value={editingCategory.color}
+                        />
+                      </span>
+                    ) : (
+                      <span>
+                        <strong>{category.name}</strong>
+                        <small>{category.type.replace('_', ' ')}</small>
+                      </span>
+                    )}
                     <span className="category-meta">
                       <span
                         aria-hidden="true"
                         className="color-dot"
                         style={{ background: category.color ?? '#94a3b8' }}
                       />
-                      {category.is_default ? 'Default' : 'Custom'}
+                      {category.is_default ? (
+                        'Default'
+                      ) : editingCategory?.categoryId === category.id ? (
+                        <>
+                          <Button
+                            disabled={savingCategoryId === category.id}
+                            onClick={() => void handleSaveCategory()}
+                            type="button"
+                            variant="ghost"
+                          >
+                            <Save aria-hidden="true" size={16} />
+                            {savingCategoryId === category.id ? 'Saving...' : 'Save'}
+                          </Button>
+                          <Button onClick={() => setEditingCategory(null)} type="button" variant="ghost">
+                            <X aria-hidden="true" size={16} />
+                            Cancel
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          <Button
+                            onClick={() =>
+                              setEditingCategory({
+                                categoryId: category.id,
+                                color: category.color ?? '#1d7a5d',
+                                name: category.name,
+                                type: category.type,
+                              })
+                            }
+                            type="button"
+                            variant="ghost"
+                          >
+                            <Pencil aria-hidden="true" size={16} />
+                            Edit
+                          </Button>
+                          <Button
+                            disabled={archivingCategoryId === category.id}
+                            onClick={() => handleArchiveCategory(category.id)}
+                            type="button"
+                            variant="ghost"
+                          >
+                            <Archive aria-hidden="true" size={16} />
+                            {archivingCategoryId === category.id ? 'Archiving...' : 'Archive'}
+                          </Button>
+                        </>
+                      )}
                     </span>
                   </div>
                 ))}

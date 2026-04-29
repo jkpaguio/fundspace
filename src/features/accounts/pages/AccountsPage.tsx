@@ -1,11 +1,19 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
-import { Plus } from 'lucide-react'
+import { Archive, Pencil, Plus, Save, X } from 'lucide-react'
+import { EmptyState } from '../../../components/common/EmptyState'
+import { PageHeader } from '../../../components/common/PageHeader'
 import { Button, Card, CardContent, CardHeader, Input } from '../../../components/ui'
 import { accountTypeOptions } from '../../../constants/options'
 import { formatCurrency } from '../../../lib/formatCurrency'
 import type { Account, AccountType } from '../../../types/domain'
 import { useWorkspaceOutlet } from '../../../hooks/useWorkspaceOutlet'
-import { createAccount, listAccounts } from '../services/accountService'
+import { archiveAccount, createAccount, listAccounts, updateAccount } from '../services/accountService'
+
+type AccountEditDraft = {
+  accountId: string
+  name: string
+  type: AccountType
+}
 
 export function AccountsPage() {
   const { selectedWorkspace } = useWorkspaceOutlet()
@@ -16,6 +24,9 @@ export function AccountsPage() {
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
+  const [archivingAccountId, setArchivingAccountId] = useState('')
+  const [editingAccount, setEditingAccount] = useState<AccountEditDraft | null>(null)
+  const [savingAccountId, setSavingAccountId] = useState('')
 
   const loadAccounts = useCallback(async () => {
     if (!selectedWorkspace) {
@@ -62,6 +73,39 @@ export function AccountsPage() {
     }
   }
 
+  const handleArchiveAccount = async (accountId: string) => {
+    setArchivingAccountId(accountId)
+    setError('')
+
+    try {
+      await archiveAccount(accountId)
+      await loadAccounts()
+    } catch (archiveError) {
+      setError(archiveError instanceof Error ? archiveError.message : 'Unable to archive account.')
+    } finally {
+      setArchivingAccountId('')
+    }
+  }
+
+  const handleSaveAccount = async () => {
+    if (!editingAccount) {
+      return
+    }
+
+    setSavingAccountId(editingAccount.accountId)
+    setError('')
+
+    try {
+      await updateAccount(editingAccount)
+      setEditingAccount(null)
+      await loadAccounts()
+    } catch (updateError) {
+      setError(updateError instanceof Error ? updateError.message : 'Unable to update account.')
+    } finally {
+      setSavingAccountId('')
+    }
+  }
+
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
       void loadAccounts()
@@ -72,18 +116,19 @@ export function AccountsPage() {
 
   return (
     <div className="page-stack">
-      <header className="page-header">
-        <div>
-          <p className="eyebrow">Accounts</p>
-          <h1>Where money is stored</h1>
-          <p className="lead">Create wallets, bank accounts, savings containers, and business capital accounts.</p>
-        </div>
-      </header>
+      <PageHeader
+        eyebrow="Accounts"
+        heading="Where money is stored"
+        lead="Create wallets, bank accounts, savings containers, and business capital accounts."
+      />
 
       {error && <p className="form-error">{error}</p>}
 
       {!selectedWorkspace ? (
-        <p className="empty-state">Create a workspace before adding accounts.</p>
+        <EmptyState
+          description="Choose or create a space first so new accounts are attached to the right ledger."
+          title="Start with a space"
+        />
       ) : (
         <section className="content-grid">
           <Card>
@@ -145,16 +190,90 @@ export function AccountsPage() {
             </div>
 
             {accounts.length === 0 && !isLoading ? (
-              <p className="empty-state">No accounts yet. Add your first wallet or bank account.</p>
+              <EmptyState
+                description="Add a wallet, bank account, or savings container so transactions have a place to land."
+                title="Your account list is empty"
+              />
             ) : (
               <div className="record-list">
                 {accounts.map((account) => (
                   <div className="record-row" key={account.id}>
-                    <span>
-                      <strong>{account.name}</strong>
-                      <small>{account.type}</small>
+                    {editingAccount?.accountId === account.id ? (
+                      <span className="inline-edit-fields">
+                        <Input
+                          onChange={(event) =>
+                            setEditingAccount({ ...editingAccount, name: event.target.value })
+                          }
+                          required
+                          value={editingAccount.name}
+                        />
+                        <select
+                          className="field-input"
+                          onChange={(event) =>
+                            setEditingAccount({
+                              ...editingAccount,
+                              type: event.target.value as AccountType,
+                            })
+                          }
+                          value={editingAccount.type}
+                        >
+                          {accountTypeOptions.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                      </span>
+                    ) : (
+                      <span>
+                        <strong>{account.name}</strong>
+                        <small>{account.type}</small>
+                      </span>
+                    )}
+                    <span className="inline-actions">
+                      <strong>{formatCurrency(account.current_balance, account.currency)}</strong>
+                      {editingAccount?.accountId === account.id ? (
+                        <>
+                          <Button
+                            disabled={savingAccountId === account.id}
+                            onClick={() => void handleSaveAccount()}
+                            type="button"
+                            variant="ghost"
+                          >
+                            <Save aria-hidden="true" size={16} />
+                            {savingAccountId === account.id ? 'Saving...' : 'Save'}
+                          </Button>
+                          <Button onClick={() => setEditingAccount(null)} type="button" variant="ghost">
+                            <X aria-hidden="true" size={16} />
+                            Cancel
+                          </Button>
+                        </>
+                      ) : (
+                        <Button
+                          onClick={() =>
+                            setEditingAccount({
+                              accountId: account.id,
+                              name: account.name,
+                              type: account.type,
+                            })
+                          }
+                          type="button"
+                          variant="ghost"
+                        >
+                          <Pencil aria-hidden="true" size={16} />
+                          Edit
+                        </Button>
+                      )}
+                      <Button
+                        disabled={archivingAccountId === account.id}
+                        onClick={() => handleArchiveAccount(account.id)}
+                        type="button"
+                        variant="ghost"
+                      >
+                        <Archive aria-hidden="true" size={16} />
+                        {archivingAccountId === account.id ? 'Archiving...' : 'Archive'}
+                      </Button>
                     </span>
-                    <span>{formatCurrency(account.current_balance, account.currency)}</span>
                   </div>
                 ))}
               </div>

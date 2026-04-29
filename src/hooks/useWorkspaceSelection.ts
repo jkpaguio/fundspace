@@ -11,6 +11,10 @@ export function setStoredWorkspaceId(workspaceId: string) {
   window.localStorage.setItem(SELECTED_WORKSPACE_KEY, workspaceId)
 }
 
+export function clearStoredWorkspaceId() {
+  window.localStorage.removeItem(SELECTED_WORKSPACE_KEY)
+}
+
 export function useWorkspaceSelection() {
   const [workspaces, setWorkspaces] = useState<WorkspaceWithMembership[]>([])
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState(
@@ -20,9 +24,7 @@ export function useWorkspaceSelection() {
   const [error, setError] = useState('')
 
   const selectedWorkspace =
-    workspaces.find((workspace) => workspace.id === selectedWorkspaceId) ??
-    workspaces[0] ??
-    null
+    workspaces.find((workspace) => workspace.id === selectedWorkspaceId) ?? null
 
   const loadWorkspaces = useCallback(async () => {
     setIsLoading(true)
@@ -34,13 +36,14 @@ export function useWorkspaceSelection() {
 
       const storedWorkspace = getStoredWorkspaceId()
       const nextSelected =
-        nextWorkspaces.find((workspace) => workspace.id === storedWorkspace) ??
-        nextWorkspaces[0] ??
-        null
+        nextWorkspaces.find((workspace) => workspace.id === storedWorkspace) ?? null
 
       if (nextSelected) {
         setSelectedWorkspaceId(nextSelected.id)
         setStoredWorkspaceId(nextSelected.id)
+      } else {
+        setSelectedWorkspaceId(null)
+        clearStoredWorkspaceId()
       }
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : 'Unable to load workspaces.')
