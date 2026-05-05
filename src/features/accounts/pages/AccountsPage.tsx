@@ -2,7 +2,8 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Archive, Pencil, Plus, Save, X } from 'lucide-react'
 import { EmptyState } from '../../../components/common/EmptyState'
 import { PageHeader } from '../../../components/common/PageHeader'
-import { Button, Card, CardContent, CardHeader, Input } from '../../../components/ui'
+import { SyncBadge } from '../../../components/common/SyncBadge'
+import { Button, Input, Modal } from '../../../components/ui'
 import { accountTypeOptions } from '../../../constants/options'
 import { formatCurrency } from '../../../lib/formatCurrency'
 import type { Account, AccountType } from '../../../types/domain'
@@ -24,6 +25,7 @@ export function AccountsPage() {
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [archivingAccountId, setArchivingAccountId] = useState('')
   const [editingAccount, setEditingAccount] = useState<AccountEditDraft | null>(null)
   const [savingAccountId, setSavingAccountId] = useState('')
@@ -65,6 +67,7 @@ export function AccountsPage() {
       })
       setName('')
       setStartingBalance('0')
+      setIsCreateModalOpen(false)
       await loadAccounts()
     } catch (createError) {
       setError(createError instanceof Error ? createError.message : 'Unable to create account.')
@@ -130,63 +133,17 @@ export function AccountsPage() {
           title="Start with a space"
         />
       ) : (
-        <section className="content-grid">
-          <Card>
-            <CardHeader>
-              <Plus aria-hidden="true" size={20} />
-              <h2>Add account</h2>
-            </CardHeader>
-            <CardContent>
-              <form className="stack-form" onSubmit={handleCreateAccount}>
-                <label className="field-group">
-                  Name
-                  <Input
-                    onChange={(event) => setName(event.target.value)}
-                    placeholder="Cash Wallet"
-                    required
-                    value={name}
-                  />
-                </label>
-
-                <label className="field-group">
-                  Type
-                  <select
-                    className="field-input"
-                    onChange={(event) => setType(event.target.value as AccountType)}
-                    value={type}
-                  >
-                    {accountTypeOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <label className="field-group">
-                  Starting balance
-                  <Input
-                    min="0"
-                    onChange={(event) => setStartingBalance(event.target.value)}
-                    required
-                    step="0.01"
-                    type="number"
-                    value={startingBalance}
-                  />
-                </label>
-
-                <Button disabled={isCreating} type="submit">
-                  <Plus aria-hidden="true" size={18} />
-                  {isCreating ? 'Adding...' : 'Add account'}
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
-
+        <>
           <section className="list-panel">
             <div className="section-heading">
               <h2>Account list</h2>
-              <span>{isLoading ? 'Loading' : `${accounts.length} active`}</span>
+              <span className="inline-actions">
+                <span>{isLoading ? 'Loading' : `${accounts.length} active`}</span>
+                <Button onClick={() => setIsCreateModalOpen(true)} type="button">
+                  <Plus aria-hidden="true" size={18} />
+                  Add account
+                </Button>
+              </span>
             </div>
 
             {accounts.length === 0 && !isLoading ? (
@@ -228,6 +185,7 @@ export function AccountsPage() {
                       <span>
                         <strong>{account.name}</strong>
                         <small>{account.type}</small>
+                        <SyncBadge status={(account as { sync_status?: string }).sync_status} />
                       </span>
                     )}
                     <span className="inline-actions">
@@ -279,7 +237,58 @@ export function AccountsPage() {
               </div>
             )}
           </section>
-        </section>
+
+          <Modal
+            description="Create a wallet, bank account, savings container, or business capital account."
+            isOpen={isCreateModalOpen}
+            onClose={() => setIsCreateModalOpen(false)}
+            title="Add account"
+          >
+            <form className="stack-form" onSubmit={handleCreateAccount}>
+              <label className="field-group">
+                Name
+                <Input
+                  onChange={(event) => setName(event.target.value)}
+                  placeholder="Cash Wallet"
+                  required
+                  value={name}
+                />
+              </label>
+
+              <label className="field-group">
+                Type
+                <select
+                  className="field-input"
+                  onChange={(event) => setType(event.target.value as AccountType)}
+                  value={type}
+                >
+                  {accountTypeOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="field-group">
+                Starting balance
+                <Input
+                  min="0"
+                  onChange={(event) => setStartingBalance(event.target.value)}
+                  required
+                  step="0.01"
+                  type="number"
+                  value={startingBalance}
+                />
+              </label>
+
+              <Button disabled={isCreating} type="submit">
+                <Plus aria-hidden="true" size={18} />
+                {isCreating ? 'Adding...' : 'Add account'}
+              </Button>
+            </form>
+          </Modal>
+        </>
       )}
     </div>
   )

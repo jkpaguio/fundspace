@@ -1,5 +1,6 @@
 import { buildBudgetUsage, listBudgets } from '../../budgets/services/budgetService'
 import { listAccounts } from '../../accounts/services/accountService'
+import { listActivityLogs } from '../../activity/services/activityService'
 import { listCategories } from '../../categories/services/categoryService'
 import { listDebts } from '../../debts/services/debtService'
 import {
@@ -12,6 +13,7 @@ import { listSavingsBuckets } from '../../savings/services/savingsService'
 import { listMonthlyTransactions, listTransactions } from '../../transactions/services/transactionService'
 import type {
   Account,
+  ActivityLog,
   BudgetUsage,
   Business,
   BusinessExpense,
@@ -33,6 +35,7 @@ export type DashboardBusinessChild = {
 
 export type DashboardData = {
   accounts: Account[]
+  activityLogs: ActivityLog[]
   budgetUsage: BudgetUsage[]
   businessChildren: DashboardBusinessChild[]
   categories: Category[]
@@ -46,9 +49,10 @@ export async function loadDashboardData(workspaceId: string, workspaceType: Work
   const currentDate = new Date()
   const isBusinessWorkspace = workspaceType === 'business' || workspaceType === 'side_hustle'
 
-  const [accounts, categories, monthlyTransactions, recentTransactions, budgets, savingsBuckets, debts, businesses] =
+  const [accounts, activityLogs, categories, monthlyTransactions, recentTransactions, budgets, savingsBuckets, debts, businesses] =
     await Promise.all([
       listAccounts(workspaceId),
+      listActivityLogs(workspaceId),
       listCategories(workspaceId),
       listMonthlyTransactions(workspaceId),
       listTransactions(workspaceId),
@@ -72,6 +76,7 @@ export async function loadDashboardData(workspaceId: string, workspaceType: Work
 
   return {
     accounts,
+    activityLogs: activityLogs.slice(0, 5),
     budgetUsage: buildBudgetUsage(budgets, monthlyTransactions),
     businessChildren,
     categories,

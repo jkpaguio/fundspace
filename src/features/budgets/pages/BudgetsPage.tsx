@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
 import { AlertTriangle, Pencil, Plus, Save, X } from 'lucide-react'
-import { Button, Card, CardContent, CardHeader, Input } from '../../../components/ui'
+import { SyncBadge } from '../../../components/common/SyncBadge'
+import { Button, Card, CardContent, CardHeader, Input, Modal } from '../../../components/ui'
 import { budgetStatusLabels, monthOptions } from '../../../constants/options'
 import { formatCurrency } from '../../../lib/formatCurrency'
 import { useWorkspaceOutlet } from '../../../hooks/useWorkspaceOutlet'
@@ -30,6 +31,7 @@ export function BudgetsPage() {
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [editingBudget, setEditingBudget] = useState<BudgetEditDraft | null>(null)
   const [savingBudgetId, setSavingBudgetId] = useState('')
 
@@ -108,6 +110,7 @@ export function BudgetsPage() {
       })
       setLimitAmount('')
       setWarningPercentage('80')
+      setIsCreateModalOpen(false)
       await loadPageData()
     } catch (createError) {
       setError(createError instanceof Error ? createError.message : 'Unable to create budget.')
@@ -170,94 +173,17 @@ export function BudgetsPage() {
             </Card>
           </section>
 
-          <section className="content-grid">
-            <Card>
-              <CardHeader>
-                <Plus aria-hidden="true" size={20} />
-                <h2>Create budget</h2>
-              </CardHeader>
-              <CardContent>
-                <form className="stack-form" onSubmit={handleCreateBudget}>
-                  <label className="field-group">
-                    Category
-                    <select
-                      className="field-input"
-                      onChange={(event) => setCategoryId(event.target.value)}
-                      required
-                      value={categoryId}
-                    >
-                      {expenseCategories.map((category) => (
-                        <option key={category.id} value={category.id}>
-                          {category.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-
-                  <label className="field-group">
-                    Month
-                    <select
-                      className="field-input"
-                      onChange={(event) => setMonth(event.target.value)}
-                      value={month}
-                    >
-                      {monthOptions.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-
-                  <label className="field-group">
-                    Year
-                    <Input
-                      min="2024"
-                      onChange={(event) => setYear(event.target.value)}
-                      required
-                      step="1"
-                      type="number"
-                      value={year}
-                    />
-                  </label>
-
-                  <label className="field-group">
-                    Limit amount
-                    <Input
-                      min="0.01"
-                      onChange={(event) => setLimitAmount(event.target.value)}
-                      required
-                      step="0.01"
-                      type="number"
-                      value={limitAmount}
-                    />
-                  </label>
-
-                  <label className="field-group">
-                    Warning percentage
-                    <Input
-                      max="100"
-                      min="1"
-                      onChange={(event) => setWarningPercentage(event.target.value)}
-                      required
-                      step="0.01"
-                      type="number"
-                      value={warningPercentage}
-                    />
-                  </label>
-
-                  <Button disabled={isSubmitting || expenseCategories.length === 0} type="submit">
-                    <Plus aria-hidden="true" size={18} />
-                    {isSubmitting ? 'Creating...' : 'Create budget'}
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
-
+          <>
             <section className="list-panel">
               <div className="section-heading">
                 <h2>Monthly budget usage</h2>
-                <span>{isLoading ? 'Loading' : `${budgetUsage.length} budgets`}</span>
+                <span className="inline-actions">
+                  <span>{isLoading ? 'Loading' : `${budgetUsage.length} budgets`}</span>
+                  <Button onClick={() => setIsCreateModalOpen(true)} type="button">
+                    <Plus aria-hidden="true" size={18} />
+                    Create budget
+                  </Button>
+                </span>
               </div>
 
               {budgetUsage.length === 0 && !isLoading ? (
@@ -323,6 +249,7 @@ export function BudgetsPage() {
                             <small>
                               {budgetStatusLabels[item.status]} at {item.usagePercentage.toFixed(1)}%
                             </small>
+                            <SyncBadge status={(item.budget as { sync_status?: string }).sync_status} />
                           </span>
                         )}
                         <span className="record-row-meta">
@@ -373,7 +300,89 @@ export function BudgetsPage() {
                 </div>
               )}
             </section>
-          </section>
+
+            <Modal
+              description="Set a monthly limit for one spending category."
+              isOpen={isCreateModalOpen}
+              onClose={() => setIsCreateModalOpen(false)}
+              title="Create budget"
+            >
+              <form className="stack-form" onSubmit={handleCreateBudget}>
+                <label className="field-group">
+                  Category
+                  <select
+                    className="field-input"
+                    onChange={(event) => setCategoryId(event.target.value)}
+                    required
+                    value={categoryId}
+                  >
+                    {expenseCategories.map((category) => (
+                      <option key={category.id} value={category.id}>
+                        {category.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="field-group">
+                  Month
+                  <select
+                    className="field-input"
+                    onChange={(event) => setMonth(event.target.value)}
+                    value={month}
+                  >
+                    {monthOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="field-group">
+                  Year
+                  <Input
+                    min="2024"
+                    onChange={(event) => setYear(event.target.value)}
+                    required
+                    step="1"
+                    type="number"
+                    value={year}
+                  />
+                </label>
+
+                <label className="field-group">
+                  Limit amount
+                  <Input
+                    min="0.01"
+                    onChange={(event) => setLimitAmount(event.target.value)}
+                    required
+                    step="0.01"
+                    type="number"
+                    value={limitAmount}
+                  />
+                </label>
+
+                <label className="field-group">
+                  Warning percentage
+                  <Input
+                    max="100"
+                    min="1"
+                    onChange={(event) => setWarningPercentage(event.target.value)}
+                    required
+                    step="0.01"
+                    type="number"
+                    value={warningPercentage}
+                  />
+                </label>
+
+                <Button disabled={isSubmitting || expenseCategories.length === 0} type="submit">
+                  <Plus aria-hidden="true" size={18} />
+                  {isSubmitting ? 'Creating...' : 'Create budget'}
+                </Button>
+              </form>
+            </Modal>
+          </>
         </>
       )}
     </div>

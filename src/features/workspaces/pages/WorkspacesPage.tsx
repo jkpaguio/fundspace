@@ -3,11 +3,12 @@ import { Link, useNavigate } from 'react-router-dom'
 import { ArrowRight, BriefcaseBusiness, CheckCircle2, Plus, Settings2 } from 'lucide-react'
 import { EmptyState } from '../../../components/common/EmptyState'
 import { PageHeader } from '../../../components/common/PageHeader'
-import { Button, Card, CardContent, CardHeader, Input } from '../../../components/ui'
+import { Button, Input } from '../../../components/ui'
 import { workspaceTypeDescriptions } from '../../../constants/options'
 import { routes } from '../../../app/routes'
 import { useAuthSession } from '../../../hooks/useAuthSession'
 import { useWorkspaceOutlet } from '../../../hooks/useWorkspaceOutlet'
+import { canManageWorkspaceMembers } from '../../../lib/permissions'
 import { acceptWorkspaceInvite } from '../services/workspaceService'
 
 export function WorkspacesPage() {
@@ -44,19 +45,22 @@ export function WorkspacesPage() {
   )
 
   const ownedWorkspaces = useMemo(
-    () =>
-      filteredWorkspaces.filter((workspace) => workspace.owner_id === currentUserId),
+    () => filteredWorkspaces.filter((workspace) => workspace.owner_id === currentUserId),
     [currentUserId, filteredWorkspaces],
   )
   const sharedWorkspaces = useMemo(
-    () =>
-      filteredWorkspaces.filter((workspace) => workspace.owner_id !== currentUserId),
+    () => filteredWorkspaces.filter((workspace) => workspace.owner_id !== currentUserId),
     [currentUserId, filteredWorkspaces],
   )
 
   const handleSelectWorkspace = (workspaceId: string) => {
     selectWorkspace(workspaceId)
     navigate(routes.dashboard)
+  }
+
+  const handleOpenWorkspaceSettings = (workspaceId: string) => {
+    selectWorkspace(workspaceId)
+    navigate(routes.workspaceSettings)
   }
 
   const handleAcceptInvite = async (workspaceId: string) => {
@@ -80,11 +84,11 @@ export function WorkspacesPage() {
   const hasNoSpaces = !isLoading && workspaces.length === 0
 
   return (
-    <div className="page-stack">
+    <div className="page-stack workspace-page">
       <PageHeader
         eyebrow="Select space"
         heading="Choose a space to enter"
-        lead="Pick the money space you want to open. Space settings, members, and deeper management stay under Settings after you get inside."
+        lead="Pick the money space you want to open, then continue into the right money area."
       />
 
       {(error || formError) && <p className="form-error">{error || formError}</p>}
@@ -101,51 +105,55 @@ export function WorkspacesPage() {
         />
       ) : (
         <>
-          <section className="landing-action-row">
-            <Button asChild>
-              <Link to={routes.createWorkspace}>
-                <Plus aria-hidden="true" size={18} />
-                Create space
-              </Link>
-            </Button>
-            <Button asChild variant="secondary">
-              <Link to={routes.settings}>
-                <Settings2 aria-hidden="true" size={18} />
-                Profile and settings
-              </Link>
-            </Button>
+          <section className="section-surface section-surface-muted workspace-picker-toolbar">
+            <div className="workspace-picker-toolbar-main">
+              <Button asChild>
+                <Link to={routes.createWorkspace}>
+                  <Plus aria-hidden="true" size={18} />
+                  Create space
+                </Link>
+              </Button>
+
+              <div className="workspace-picker-meta">
+                <span className="badge">{workspaces.length} spaces</span>
+                <span className="badge">
+                  {ownedWorkspaces.length} owned / {sharedWorkspaces.length} shared
+                </span>
+                {selectedWorkspace && (
+                  <span className="badge">
+                    <CheckCircle2 aria-hidden="true" size={14} />
+                    Active: {selectedWorkspace.name}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div className="workspace-picker-secondary">
+              {selectedWorkspace && (
+                <Button asChild variant="secondary">
+                  <Link to={routes.workspaceSettings}>
+                    <BriefcaseBusiness aria-hidden="true" size={18} />
+                    Manage active space
+                  </Link>
+                </Button>
+              )}
+              <Button asChild variant="secondary">
+                <Link to={routes.settings}>
+                  <Settings2 aria-hidden="true" size={18} />
+                  Profile and settings
+                </Link>
+              </Button>
+            </div>
           </section>
 
-          <section className="workspace-hero-grid">
-            <Card className="workspace-hero-card">
-              <CardHeader>
-                <BriefcaseBusiness aria-hidden="true" size={20} />
-                <h2>Your available spaces</h2>
-              </CardHeader>
-              <CardContent>
-                <div className="record-list">
-                  <div className="record-row">
-                    <span>
-                      <strong>{workspaces.length}</strong>
-                      <small>Total spaces you can access</small>
-                    </span>
-                    <span>{ownedWorkspaces.length} owned</span>
-                  </div>
-                  <div className="record-row">
-                    <span>
-                      <strong>{sharedWorkspaces.length}</strong>
-                      <small>Shared or invited spaces</small>
-                    </span>
-                    <span>{selectedWorkspace?.name ?? 'None selected'}</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </section>
-
-          <section className="list-panel">
-            <div className="section-heading">
-              <h2>Find a space</h2>
+          <section className="section-surface workspace-search-panel">
+            <div className="section-heading section-heading-stack">
+              <div>
+                <h2>Find a space</h2>
+                <p className="section-description">
+                  Choose first. Deeper member and identity changes stay inside Space settings.
+                </p>
+              </div>
               <span>{filteredWorkspaces.length} matches</span>
             </div>
 
@@ -182,13 +190,9 @@ export function WorkspacesPage() {
                         className={`record-row workspace-select-row ${isSelected ? 'workspace-card-selected' : ''}`}
                         key={workspace.id}
                       >
-                        <span>
+                        <div className="workspace-select-info">
                           <strong>{workspace.name}</strong>
-                          <small>
-                            {workspaceTypeDescriptions[workspace.type]} · {workspace.currency}
-                          </small>
-                        </span>
-                        <div className="workspace-select-actions">
+                          <small>{workspaceTypeDescriptions[workspace.type]} / {workspace.currency}</small>
                           <div className="workspace-select-badges">
                             <span className="badge">owner</span>
                             {isSelected && (
@@ -198,6 +202,16 @@ export function WorkspacesPage() {
                               </span>
                             )}
                           </div>
+                        </div>
+                        <div className="workspace-select-action-row">
+                          <Button
+                            onClick={() => handleOpenWorkspaceSettings(workspace.id)}
+                            type="button"
+                            variant="secondary"
+                          >
+                            <Settings2 aria-hidden="true" size={16} />
+                            Settings
+                          </Button>
                           <Button onClick={() => handleSelectWorkspace(workspace.id)} type="button">
                             {isSelected ? 'Continue' : 'Select'}
                             <ArrowRight aria-hidden="true" size={16} />
@@ -230,25 +244,35 @@ export function WorkspacesPage() {
                   {sharedWorkspaces.map((workspace) => {
                     const isSelected = selectedWorkspace?.id === workspace.id
                     const membershipStatus = workspace.membership?.status ?? 'active'
+                    const membershipRole = workspace.membership?.role ?? null
                     const isInvited = membershipStatus === 'invited'
                     const isPending = pendingWorkspaceId === workspace.id
+                    const canManageThisSpace = canManageWorkspaceMembers(membershipRole)
 
                     return (
                       <div
                         className={`record-row workspace-select-row ${isSelected ? 'workspace-card-selected' : ''}`}
                         key={workspace.id}
                       >
-                        <span>
+                        <div className="workspace-select-info">
                           <strong>{workspace.name}</strong>
-                          <small>
-                            {workspaceTypeDescriptions[workspace.type]} · {workspace.currency}
-                          </small>
-                        </span>
-                        <div className="workspace-select-actions">
+                          <small>{workspaceTypeDescriptions[workspace.type]} / {workspace.currency}</small>
                           <div className="workspace-select-badges">
-                            <span className="badge">{workspace.membership?.role ?? 'member'}</span>
+                            <span className="badge">{membershipRole ?? 'member'}</span>
                             <span className="badge">{membershipStatus}</span>
+                            {isSelected && (
+                              <span className="badge">
+                                <CheckCircle2 aria-hidden="true" size={14} />
+                                Active now
+                              </span>
+                            )}
                           </div>
+                        </div>
+                        <div
+                          className={`workspace-select-action-row ${
+                            isInvited || !canManageThisSpace ? 'workspace-select-action-row-single' : ''
+                          }`}
+                        >
                           {isInvited ? (
                             <Button
                               disabled={isPending}
@@ -258,10 +282,22 @@ export function WorkspacesPage() {
                               {isPending ? 'Accepting...' : 'Accept and open'}
                             </Button>
                           ) : (
-                            <Button onClick={() => handleSelectWorkspace(workspace.id)} type="button">
-                              {isSelected ? 'Continue' : 'Select'}
-                              <ArrowRight aria-hidden="true" size={16} />
-                            </Button>
+                            <>
+                              {canManageThisSpace && (
+                                <Button
+                                  onClick={() => handleOpenWorkspaceSettings(workspace.id)}
+                                  type="button"
+                                  variant="secondary"
+                                >
+                                  <Settings2 aria-hidden="true" size={16} />
+                                  Settings
+                                </Button>
+                              )}
+                              <Button onClick={() => handleSelectWorkspace(workspace.id)} type="button">
+                                {isSelected ? 'Continue' : 'Select'}
+                                <ArrowRight aria-hidden="true" size={16} />
+                              </Button>
+                            </>
                           )}
                         </div>
                       </div>

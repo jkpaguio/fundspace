@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Archive, ArrowRightLeft, Pencil, PiggyBank, Plus, Save, X } from 'lucide-react'
-import { Button, Card, CardContent, CardHeader, Input } from '../../../components/ui'
+import { SyncBadge } from '../../../components/common/SyncBadge'
+import { Button, Card, CardContent, CardHeader, Input, Modal } from '../../../components/ui'
 import { calculateGoalProgress } from '../../../lib/calculations'
 import { formatCurrency } from '../../../lib/formatCurrency'
 import { useWorkspaceOutlet } from '../../../hooks/useWorkspaceOutlet'
@@ -43,6 +44,7 @@ export function SavingsPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [isSubmittingBucket, setIsSubmittingBucket] = useState(false)
   const [isSubmittingAllocation, setIsSubmittingAllocation] = useState(false)
+  const [activeModal, setActiveModal] = useState<'bucket' | 'allocation' | null>(null)
   const [archivingBucketId, setArchivingBucketId] = useState('')
   const [editingBucket, setEditingBucket] = useState<SavingsBucketEditDraft | null>(null)
   const [savingBucketId, setSavingBucketId] = useState('')
@@ -117,6 +119,7 @@ export function SavingsPage() {
       setTargetAmount('')
       setAllocationPercentage('')
       setTargetDate('')
+      setActiveModal(null)
       await loadPageData()
     } catch (createError) {
       setError(createError instanceof Error ? createError.message : 'Unable to create bucket.')
@@ -146,6 +149,7 @@ export function SavingsPage() {
       })
       setAllocationAmount('')
       setAllocationNotes('')
+      setActiveModal(null)
       await loadPageData()
     } catch (allocationError) {
       setError(
@@ -234,168 +238,20 @@ export function SavingsPage() {
             </Card>
           </section>
 
-          <section className="content-grid">
-            <Card>
-              <CardHeader>
-                <Plus aria-hidden="true" size={20} />
-                <h2>Create bucket</h2>
-              </CardHeader>
-              <CardContent>
-                <form className="stack-form" onSubmit={handleCreateBucket}>
-                  <label className="field-group">
-                    Bucket name
-                    <Input
-                      onChange={(event) => setBucketName(event.target.value)}
-                      placeholder="Emergency fund"
-                      required
-                      value={bucketName}
-                    />
-                  </label>
-
-                  <label className="field-group">
-                    Linked account
-                    <select
-                      className="field-input"
-                      onChange={(event) => setLinkedAccountId(event.target.value)}
-                      value={linkedAccountId}
-                    >
-                      <option value="">No linked account</option>
-                      {accounts.map((account) => (
-                        <option key={account.id} value={account.id}>
-                          {account.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-
-                  <label className="field-group">
-                    Target amount
-                    <Input
-                      min="0"
-                      onChange={(event) => setTargetAmount(event.target.value)}
-                      step="0.01"
-                      type="number"
-                      value={targetAmount}
-                    />
-                  </label>
-
-                  <label className="field-group">
-                    Suggested allocation percent
-                    <Input
-                      max="100"
-                      min="0"
-                      onChange={(event) => setAllocationPercentage(event.target.value)}
-                      step="0.01"
-                      type="number"
-                      value={allocationPercentage}
-                    />
-                  </label>
-
-                  <label className="field-group">
-                    Target date
-                    <Input
-                      onChange={(event) => setTargetDate(event.target.value)}
-                      type="date"
-                      value={targetDate}
-                    />
-                  </label>
-
-                  <Button disabled={isSubmittingBucket} type="submit">
-                    <Plus aria-hidden="true" size={18} />
-                    {isSubmittingBucket ? 'Creating...' : 'Create bucket'}
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <ArrowRightLeft aria-hidden="true" size={20} />
-                <h2>Allocate savings</h2>
-              </CardHeader>
-              <CardContent>
-                <form className="stack-form" onSubmit={handleAllocateSavings}>
-                  <label className="field-group">
-                    Source account
-                    <select
-                      className="field-input"
-                      disabled={accounts.length === 0}
-                      onChange={(event) => setSourceAccountId(event.target.value)}
-                      required
-                      value={sourceAccountId}
-                    >
-                      {accounts.map((account) => (
-                        <option key={account.id} value={account.id}>
-                          {account.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-
-                  <label className="field-group">
-                    Bucket
-                    <select
-                      className="field-input"
-                      disabled={buckets.length === 0}
-                      onChange={(event) => setBucketId(event.target.value)}
-                      required
-                      value={bucketId}
-                    >
-                      {buckets.map((bucket) => (
-                        <option key={bucket.id} value={bucket.id}>
-                          {bucket.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-
-                  <label className="field-group">
-                    Amount
-                    <Input
-                      min="0.01"
-                      onChange={(event) => setAllocationAmount(event.target.value)}
-                      required
-                      step="0.01"
-                      type="number"
-                      value={allocationAmount}
-                    />
-                  </label>
-
-                  <label className="field-group">
-                    Date
-                    <Input
-                      onChange={(event) => setAllocationDate(event.target.value)}
-                      required
-                      type="date"
-                      value={allocationDate}
-                    />
-                  </label>
-
-                  <label className="field-group">
-                    Notes
-                    <Input
-                      onChange={(event) => setAllocationNotes(event.target.value)}
-                      placeholder="Set aside part of salary"
-                      value={allocationNotes}
-                    />
-                  </label>
-
-                  <Button
-                    disabled={isSubmittingAllocation || accounts.length === 0 || buckets.length === 0}
-                    type="submit"
-                  >
-                    <PiggyBank aria-hidden="true" size={18} />
-                    {isSubmittingAllocation ? 'Allocating...' : 'Allocate to bucket'}
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
-          </section>
-
           <section className="list-panel">
             <div className="section-heading">
               <h2>Active buckets</h2>
-              <span>{isLoading ? 'Loading' : `${buckets.length} active`}</span>
+              <span className="inline-actions">
+                <span>{isLoading ? 'Loading' : `${buckets.length} active`}</span>
+                <Button onClick={() => setActiveModal('bucket')} type="button">
+                  <Plus aria-hidden="true" size={18} />
+                  Create bucket
+                </Button>
+                <Button onClick={() => setActiveModal('allocation')} type="button" variant="secondary">
+                  <ArrowRightLeft aria-hidden="true" size={18} />
+                  Allocate
+                </Button>
+              </span>
             </div>
 
             {buckets.length === 0 && !isLoading ? (
@@ -471,6 +327,7 @@ export function SavingsPage() {
                             {linkedAccount?.name ?? 'No linked account'}
                             {bucket.target_date ? ` / target ${bucket.target_date}` : ''}
                           </small>
+                          <SyncBadge status={(bucket as { sync_status?: string }).sync_status} />
                         </span>
                       )}
                       <span className="record-row-meta">
@@ -535,6 +392,160 @@ export function SavingsPage() {
               </div>
             )}
           </section>
+
+          <Modal
+            description="Create a savings container and optionally link it to an account."
+            isOpen={activeModal === 'bucket'}
+            onClose={() => setActiveModal(null)}
+            title="Create bucket"
+          >
+            <form className="stack-form" onSubmit={handleCreateBucket}>
+              <label className="field-group">
+                Bucket name
+                <Input
+                  onChange={(event) => setBucketName(event.target.value)}
+                  placeholder="Emergency fund"
+                  required
+                  value={bucketName}
+                />
+              </label>
+
+              <label className="field-group">
+                Linked account
+                <select
+                  className="field-input"
+                  onChange={(event) => setLinkedAccountId(event.target.value)}
+                  value={linkedAccountId}
+                >
+                  <option value="">No linked account</option>
+                  {accounts.map((account) => (
+                    <option key={account.id} value={account.id}>
+                      {account.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="field-group">
+                Target amount
+                <Input
+                  min="0"
+                  onChange={(event) => setTargetAmount(event.target.value)}
+                  step="0.01"
+                  type="number"
+                  value={targetAmount}
+                />
+              </label>
+
+              <label className="field-group">
+                Suggested allocation percent
+                <Input
+                  max="100"
+                  min="0"
+                  onChange={(event) => setAllocationPercentage(event.target.value)}
+                  step="0.01"
+                  type="number"
+                  value={allocationPercentage}
+                />
+              </label>
+
+              <label className="field-group">
+                Target date
+                <Input
+                  onChange={(event) => setTargetDate(event.target.value)}
+                  type="date"
+                  value={targetDate}
+                />
+              </label>
+
+              <Button disabled={isSubmittingBucket} type="submit">
+                <Plus aria-hidden="true" size={18} />
+                {isSubmittingBucket ? 'Creating...' : 'Create bucket'}
+              </Button>
+            </form>
+          </Modal>
+
+          <Modal
+            description="Move money from an account into one of your savings buckets."
+            isOpen={activeModal === 'allocation'}
+            onClose={() => setActiveModal(null)}
+            title="Allocate savings"
+          >
+            <form className="stack-form" onSubmit={handleAllocateSavings}>
+              <label className="field-group">
+                Source account
+                <select
+                  className="field-input"
+                  disabled={accounts.length === 0}
+                  onChange={(event) => setSourceAccountId(event.target.value)}
+                  required
+                  value={sourceAccountId}
+                >
+                  {accounts.map((account) => (
+                    <option key={account.id} value={account.id}>
+                      {account.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="field-group">
+                Bucket
+                <select
+                  className="field-input"
+                  disabled={buckets.length === 0}
+                  onChange={(event) => setBucketId(event.target.value)}
+                  required
+                  value={bucketId}
+                >
+                  {buckets.map((bucket) => (
+                    <option key={bucket.id} value={bucket.id}>
+                      {bucket.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="field-group">
+                Amount
+                <Input
+                  min="0.01"
+                  onChange={(event) => setAllocationAmount(event.target.value)}
+                  required
+                  step="0.01"
+                  type="number"
+                  value={allocationAmount}
+                />
+              </label>
+
+              <label className="field-group">
+                Date
+                <Input
+                  onChange={(event) => setAllocationDate(event.target.value)}
+                  required
+                  type="date"
+                  value={allocationDate}
+                />
+              </label>
+
+              <label className="field-group">
+                Notes
+                <Input
+                  onChange={(event) => setAllocationNotes(event.target.value)}
+                  placeholder="Set aside part of salary"
+                  value={allocationNotes}
+                />
+              </label>
+
+              <Button
+                disabled={isSubmittingAllocation || accounts.length === 0 || buckets.length === 0}
+                type="submit"
+              >
+                <PiggyBank aria-hidden="true" size={18} />
+                {isSubmittingAllocation ? 'Allocating...' : 'Allocate to bucket'}
+              </Button>
+            </form>
+          </Modal>
         </>
       )}
     </div>

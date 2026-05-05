@@ -1,9 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { NavLink } from 'react-router-dom'
 import {
   AlertTriangle,
   ArrowDownCircle,
+  ArrowRight,
   ArrowUpCircle,
   BriefcaseBusiness,
+  CheckCircle2,
   Package,
   PiggyBank,
   TrendingUp,
@@ -12,6 +15,7 @@ import {
 import { EmptyState } from '../../../components/common/EmptyState'
 import { PageHeader } from '../../../components/common/PageHeader'
 import { Card, CardContent, CardHeader } from '../../../components/ui'
+import { routes } from '../../../app/routes'
 import {
   calculateMonthlyExpenses,
   calculateMonthlyIncome,
@@ -27,6 +31,7 @@ import { loadDashboardData, type DashboardData } from '../services/dashboardServ
 
 const emptyDashboard: DashboardData = {
   accounts: [],
+  activityLogs: [],
   budgetUsage: [],
   businessChildren: [],
   categories: [],
@@ -36,44 +41,31 @@ const emptyDashboard: DashboardData = {
   savingsBuckets: [],
 }
 
-const dashboardCopy: Record<
-  WorkspaceType,
-  { eyebrow: string; heading: string; lead: string; variantTitle: string; variantLead: string }
-> = {
+const dashboardCopy: Record<WorkspaceType, { eyebrow: string; heading: string; lead: string }> = {
   business: {
-    eyebrow: 'Business dashboard',
+    eyebrow: 'Business home',
     heading: 'Operations and profitability',
     lead: 'Track cash movement, sales performance, and business operating pressure from one space view.',
-    variantLead: 'This dashboard emphasizes operating results, product activity, and business cash movement.',
-    variantTitle: 'Business space focus',
   },
   family: {
-    eyebrow: 'Family dashboard',
+    eyebrow: 'Family home',
     heading: 'Shared money and household goals',
     lead: 'See income, spending, savings progress, and debt commitments for your shared household space.',
-    variantLead: 'This dashboard emphasizes shared spending discipline, family savings targets, and open obligations.',
-    variantTitle: 'Family space focus',
   },
   other: {
-    eyebrow: 'Space dashboard',
+    eyebrow: 'Space home',
     heading: 'Monthly financial status',
     lead: 'Review balances, money flow, savings progress, and debt pressure for the active space.',
-    variantLead: 'This dashboard emphasizes practical money flow, reserve building, and upcoming liabilities.',
-    variantTitle: 'Space focus',
   },
   personal: {
-    eyebrow: 'Personal dashboard',
+    eyebrow: 'Personal home',
     heading: 'Your money at a glance',
-    lead: 'Review balances, monthly cash flow, savings goals, and debt pressure for your personal space.',
-    variantLead: 'This dashboard emphasizes daily money visibility, savings momentum, and budget awareness.',
-    variantTitle: 'Personal space focus',
+    lead: 'Balances, cash flow, savings, and debt in one view.',
   },
   side_hustle: {
-    eyebrow: 'Side hustle dashboard',
+    eyebrow: 'Side hustle home',
     heading: 'Sales, costs, and cash flow',
     lead: 'See whether your side hustle is bringing in revenue, covering costs, and staying healthy month to month.',
-    variantLead: 'This dashboard emphasizes lightweight business operations, product output, and owner cash visibility.',
-    variantTitle: 'Side hustle focus',
   },
 }
 
@@ -228,8 +220,192 @@ export function DashboardPage() {
     [dashboard.businessChildren],
   )
 
+  const totalBusinessSales = useMemo(
+    () => dashboard.businessChildren.reduce((total, item) => total + item.sales.length, 0),
+    [dashboard.businessChildren],
+  )
+
+  const totalBusinessExpenses = useMemo(
+    () => dashboard.businessChildren.reduce((total, item) => total + item.expenses.length, 0),
+    [dashboard.businessChildren],
+  )
+
+  const setupChecklist = useMemo(() => {
+    if (!selectedWorkspace) {
+      return []
+    }
+
+    const baseItems = [
+      {
+        description: 'Give this space a place to store and move money.',
+        done: dashboard.accounts.length > 0,
+        title: 'Add your first account',
+        to: routes.accounts,
+      },
+      {
+        description: 'Start the ledger so Home can react to real money activity.',
+        done: dashboard.recentTransactions.length > 0,
+        title: 'Record your first transaction',
+        to: routes.add,
+      },
+    ]
+
+    if (isBusinessWorkspace) {
+      return [
+        ...baseItems,
+        {
+          description: 'Create a business profile for products, sales, and operating costs.',
+          done: dashboard.businessChildren.length > 0,
+          title: 'Set up a business profile',
+          to: routes.business,
+        },
+        {
+          description: 'Capture the first sale or expense so operations insights can start.',
+          done: totalBusinessSales + totalBusinessExpenses > 0,
+          title: 'Log real operating activity',
+          to: routes.business,
+        },
+      ]
+    }
+
+    return [
+      ...baseItems,
+      {
+        description: 'Create at least one goal or reserve bucket for this space.',
+        done: dashboard.savingsBuckets.length > 0,
+        title: 'Add a savings goal',
+        to: routes.savings,
+      },
+      {
+        description: 'Set a category limit so Home can warn you before spending drifts.',
+        done: dashboard.budgetUsage.length > 0,
+        title: 'Set a monthly budget',
+        to: routes.budgets,
+      },
+    ]
+  }, [
+    dashboard.accounts.length,
+    dashboard.budgetUsage.length,
+    dashboard.businessChildren.length,
+    dashboard.recentTransactions.length,
+    dashboard.savingsBuckets.length,
+    isBusinessWorkspace,
+    selectedWorkspace,
+    totalBusinessExpenses,
+    totalBusinessSales,
+  ])
+
+  const nextBestActions = useMemo(() => {
+    const actions: Array<{ description: string; title: string; to: string }> = []
+
+    if (dashboard.accounts.length === 0) {
+      actions.push({
+        description: 'Start here so every balance and transaction has a proper home.',
+        title: 'Create your first account',
+        to: routes.accounts,
+      })
+    }
+
+    if (dashboard.recentTransactions.length === 0) {
+      actions.push({
+        description: 'Record an income, expense, or transfer to bring this space to life.',
+        title: 'Record the first money entry',
+        to: routes.add,
+      })
+    } else {
+      actions.push({
+        description: 'Review your recent days and get ready for the fuller calendar view.',
+        title: 'Check activity by date',
+        to: routes.calendar,
+      })
+    }
+
+    if (isBusinessWorkspace) {
+      if (dashboard.businessChildren.length === 0) {
+        actions.push({
+          description: 'Add the business profile that this space is meant to support.',
+          title: 'Create a business profile',
+          to: routes.business,
+        })
+      } else if (totalBusinessSales === 0) {
+        actions.push({
+          description: 'Log revenue so profitability and operating signals become meaningful.',
+          title: 'Record your first sale',
+          to: routes.business,
+        })
+      } else if (totalBusinessExpenses === 0) {
+        actions.push({
+          description: 'Capture operating costs so net profit reflects reality.',
+          title: 'Record an operating expense',
+          to: routes.business,
+        })
+      }
+    } else {
+      if (dashboard.savingsBuckets.length === 0) {
+        actions.push({
+          description: 'Set aside money for upcoming needs, goals, or emergencies.',
+          title: 'Create a savings goal',
+          to: routes.savings,
+        })
+      }
+
+      if (dashboard.budgetUsage.length === 0) {
+        actions.push({
+          description: 'Add one monthly category limit so overspending gets flagged early.',
+          title: 'Set your first budget',
+          to: routes.budgets,
+        })
+      }
+    }
+
+    return actions.slice(0, 3)
+  }, [
+    dashboard.accounts.length,
+    dashboard.budgetUsage.length,
+    dashboard.businessChildren.length,
+    dashboard.recentTransactions.length,
+    dashboard.savingsBuckets.length,
+    isBusinessWorkspace,
+    totalBusinessExpenses,
+    totalBusinessSales,
+  ])
+
+  const weeklyTrend = useMemo(() => {
+    const buckets = Array.from({ length: 5 }, (_, index) => ({
+      expenses: 0,
+      income: 0,
+      label: `Week ${index + 1}`,
+      net: 0,
+    }))
+
+    dashboard.monthlyTransactions.forEach((transaction) => {
+      const dayOfMonth = Number(transaction.transaction_date.slice(-2))
+      const bucketIndex = Math.min(4, Math.floor((dayOfMonth - 1) / 7))
+      const bucket = buckets[bucketIndex]
+
+      if (transaction.direction === 'in') {
+        bucket.income += transaction.amount
+        bucket.net += transaction.amount
+      } else {
+        bucket.expenses += transaction.amount
+        bucket.net -= transaction.amount
+      }
+    })
+
+    const activeBuckets = buckets.filter((bucket) => bucket.income > 0 || bucket.expenses > 0)
+
+    return activeBuckets.length > 0 ? activeBuckets : buckets.slice(0, 4)
+  }, [dashboard.monthlyTransactions])
+
+  const maxTrendValue = useMemo(
+    () => Math.max(1, ...weeklyTrend.map((bucket) => Math.abs(bucket.net))),
+    [weeklyTrend],
+  )
+
+  const completedChecklistCount = setupChecklist.filter((item) => item.done).length
+
   return (
-    <div className="page-stack">
+    <div className="page-stack dashboard-page">
       <PageHeader eyebrow={copy.eyebrow} heading={copy.heading} lead={copy.lead} />
 
       {error && <p className="form-error">{error}</p>}
@@ -241,17 +417,67 @@ export function DashboardPage() {
         />
       ) : (
         <>
-          <section className="dashboard-variant-hero">
-            <div>
-              <p className="eyebrow">{copy.variantTitle}</p>
-              <h2>{selectedWorkspace.name}</h2>
-              <p>{copy.variantLead}</p>
-            </div>
-            <div className="dashboard-variant-tags">
-              <span className="badge">{selectedWorkspace.type.replace('_', ' ')}</span>
-              <span className="badge">{selectedWorkspace.currency}</span>
-              <span className="badge">{isBusinessWorkspace ? 'operations view' : 'household view'}</span>
-            </div>
+<section className="content-grid dashboard-guidance-grid">
+            {completedChecklistCount < setupChecklist.length && (
+              <Card className="dashboard-panel">
+                <CardHeader>
+                  <h2>Setup progress</h2>
+                </CardHeader>
+                <CardContent>
+                  <p className="section-description">
+                    {completedChecklistCount} of {setupChecklist.length} core steps completed for this space.
+                  </p>
+
+                  <div className="home-checklist-list">
+                    {setupChecklist.map((item) => (
+                      <div className="home-checklist-item" key={item.title}>
+                        <div className="home-checklist-copy">
+                          <strong className="home-checklist-title">
+                            {item.done && <CheckCircle2 aria-hidden="true" size={16} />}
+                            {item.title}
+                          </strong>
+                          <small>{item.description}</small>
+                        </div>
+                        <div className="home-checklist-status">
+                          <strong>{item.done ? 'Done' : 'Next'}</strong>
+                          {!item.done && (
+                            <NavLink className="inline-link" to={item.to}>
+                              Open
+                            </NavLink>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            <Card className="dashboard-panel">
+              <CardHeader>
+                <h2>Next best actions</h2>
+              </CardHeader>
+              <CardContent>
+                {nextBestActions.length === 0 ? (
+                  <EmptyState
+                    description="This space already has the core setup in place. Use Quick Add or Calendar to keep daily money work moving."
+                    title="Core setup is in a healthy place"
+                  />
+                ) : (
+                  <div className="home-action-list">
+                    {nextBestActions.map((item, index) => (
+                      <NavLink className="home-action-card" key={item.title} to={item.to}>
+                        <div>
+                          <strong>{index === 0 ? `Do this next: ${item.title}` : item.title}</strong>
+                          <p>{item.description}</p>
+                        </div>
+                        <ArrowRight aria-hidden="true" size={18} />
+                      </NavLink>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </section>
 
           {isBusinessWorkspace ? (
@@ -531,6 +757,67 @@ export function DashboardPage() {
                 </div>
               )}
             </section>
+
+            <section className="list-panel">
+              <div className="section-heading">
+                <h2>Recent activity</h2>
+                <span>{isLoading ? 'Loading' : `${dashboard.activityLogs.length} updates`}</span>
+              </div>
+
+              {dashboard.activityLogs.length === 0 ? (
+                <EmptyState
+                  description="Space actions and record updates will start appearing here as activity builds up."
+                  title="No recent activity yet"
+                />
+              ) : (
+                <div className="record-list">
+                  {dashboard.activityLogs.map((log) => (
+                    <div className="record-row record-row-stack" key={log.id}>
+                      <span>
+                        <strong>{log.description}</strong>
+                        <small>{log.entity_type.replace('_', ' ')}</small>
+                      </span>
+                      <span className="record-row-meta">
+                        <strong>{log.action.replaceAll('_', ' ')}</strong>
+                        <small>{new Date(log.created_at).toLocaleString()}</small>
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+          </section>
+
+          <section className="content-grid">
+            <Card>
+              <CardHeader>
+                <h2>Balance trend</h2>
+              </CardHeader>
+              <CardContent>
+                <div className="trend-list">
+                  {weeklyTrend.map((bucket) => (
+                    <div className="trend-row" key={bucket.label}>
+                      <div className="trend-row-header">
+                        <span>{bucket.label}</span>
+                        <strong className={bucket.net >= 0 ? 'amount-in' : 'amount-out'}>
+                          {bucket.net >= 0 ? '+' : '-'}
+                          {formatCurrency(Math.abs(bucket.net), selectedWorkspace.currency)}
+                        </strong>
+                      </div>
+                      <div className="trend-bar-track" aria-hidden="true">
+                        <div
+                          className={`trend-bar-fill ${bucket.net >= 0 ? 'trend-bar-positive' : 'trend-bar-negative'}`}
+                          style={{ width: `${Math.max(8, (Math.abs(bucket.net) / maxTrendValue) * 100)}%` }}
+                        />
+                      </div>
+                      <p className="trend-caption">
+                        {formatCurrency(bucket.income, selectedWorkspace.currency)} in / {formatCurrency(bucket.expenses, selectedWorkspace.currency)} out
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
 
             <section className="list-panel">
               <div className="section-heading">

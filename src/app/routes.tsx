@@ -5,6 +5,8 @@ export const routes = {
   forgotPassword: '/forgot-password',
   completeProfile: '/complete-profile',
   dashboard: '/dashboard',
+  add: '/add',
+  calendar: '/calendar',
   more: '/more',
   workspace: '/workspace',
   createWorkspace: '/workspace/create',
@@ -21,6 +23,7 @@ export const routes = {
   settings: '/settings',
   currencySettings: '/settings/currency',
   workspaceSettings: '/settings/workspace',
+  syncCenter: '/settings/sync',
 } as const
 
 export const routeLabels: Record<string, string> = {
@@ -29,7 +32,9 @@ export const routeLabels: Record<string, string> = {
   [routes.register]: 'Register',
   [routes.forgotPassword]: 'Forgot password',
   [routes.completeProfile]: 'Complete profile',
-  [routes.dashboard]: 'Dashboard',
+  [routes.dashboard]: 'Home',
+  [routes.add]: 'Add',
+  [routes.calendar]: 'Calendar',
   [routes.more]: 'More',
   [routes.workspace]: 'Spaces',
   [routes.createWorkspace]: 'Create space',
@@ -46,4 +51,5 @@ export const routeLabels: Record<string, string> = {
   [routes.settings]: 'Settings',
   [routes.currencySettings]: 'Currency settings',
   [routes.workspaceSettings]: 'Space settings',
+  [routes.syncCenter]: 'Sync center',
 }

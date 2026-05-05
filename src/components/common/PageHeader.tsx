@@ -13,9 +13,9 @@ export function PageHeader({ eyebrow, heading, lead }: PageHeaderProps) {
 
   return (
     <header className="page-header">
-      <div>
+      <div className="page-header-copy">
         <div className="page-breadcrumbs" aria-label="Page context">
-          <span>Workspace app</span>
+          <span>FundSpace</span>
           <span aria-hidden="true">/</span>
           <span>{currentLabel}</span>
         </div>

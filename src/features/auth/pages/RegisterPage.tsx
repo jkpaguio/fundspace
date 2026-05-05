@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { UserPlus } from 'lucide-react'
 import { Button, Input } from '../../../components/ui'
+import { PasswordInput } from '../../../components/common/PasswordInput'
 import { routes } from '../../../app/routes'
 import { signUpWithEmail } from '../services/authService'
 import { AuthFormShell } from '../components/AuthFormShell'
@@ -42,6 +43,7 @@ export function RegisterPage() {
           Already have an account? <Link to={routes.login}>Log in</Link>
         </span>
       }
+      supportPoints={['Start with one simple space', 'Grow into shared or business tracking later']}
       title="Create account"
     >
       <form className="auth-form" onSubmit={handleSubmit}>
@@ -58,12 +60,11 @@ export function RegisterPage() {
 
         <label className="field-group">
           Password
-          <Input
+          <PasswordInput
             autoComplete="new-password"
             minLength={6}
             onChange={(event) => setPassword(event.target.value)}
             required
-            type="password"
             value={password}
           />
         </label>

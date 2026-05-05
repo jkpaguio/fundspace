@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">FundSpace</string>
+    <string name="title_activity_main">FundSpace</string>
+    <string name="package_name">app.fundspace.finance</string>
+    <string name="custom_url_scheme">app.fundspace.finance</string>
+</resources>

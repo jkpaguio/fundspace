@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { CreditCard, Pencil, Plus, Save, X } from 'lucide-react'
-import { Button, Card, CardContent, CardHeader, Input } from '../../../components/ui'
+import { SyncBadge } from '../../../components/common/SyncBadge'
+import { Button, Card, CardContent, CardHeader, Input, Modal } from '../../../components/ui'
 import { debtTypeOptions } from '../../../constants/options'
 import { formatCurrency } from '../../../lib/formatCurrency'
 import { useWorkspaceOutlet } from '../../../hooks/useWorkspaceOutlet'
@@ -50,6 +51,7 @@ export function DebtsPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [isSubmittingDebt, setIsSubmittingDebt] = useState(false)
   const [isSubmittingPayment, setIsSubmittingPayment] = useState(false)
+  const [activeModal, setActiveModal] = useState<'debt' | 'payment' | null>(null)
   const [editingDebt, setEditingDebt] = useState<DebtEditDraft | null>(null)
   const [savingDebtId, setSavingDebtId] = useState('')
 
@@ -132,6 +134,7 @@ export function DebtsPage() {
       setInterestRate('')
       setDueDate('')
       setNotes('')
+      setActiveModal(null)
       await loadPageData()
     } catch (createError) {
       setError(createError instanceof Error ? createError.message : 'Unable to create debt.')
@@ -160,6 +163,7 @@ export function DebtsPage() {
       })
       setPaymentAmount('')
       setPaymentNotes('')
+      setActiveModal(null)
       await loadPageData()
     } catch (paymentError) {
       setError(paymentError instanceof Error ? paymentError.message : 'Unable to record payment.')
@@ -216,173 +220,20 @@ export function DebtsPage() {
       ) : (
         <>
           <section className="content-grid">
-            <Card>
-              <CardHeader>
-                <Plus aria-hidden="true" size={20} />
-                <h2>Add debt</h2>
-              </CardHeader>
-              <CardContent>
-                <form className="stack-form" onSubmit={handleCreateDebt}>
-                  <label className="field-group">
-                    Type
-                    <select
-                      className="field-input"
-                      onChange={(event) => setType(event.target.value as DebtType)}
-                      value={type}
-                    >
-                      {debtTypeOptions.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-
-                  <label className="field-group">
-                    Person or institution
-                    <Input
-                      onChange={(event) => setPersonName(event.target.value)}
-                      placeholder="Bank or lender name"
-                      required
-                      value={personName}
-                    />
-                  </label>
-
-                  <label className="field-group">
-                    Original amount
-                    <Input
-                      min="0.01"
-                      onChange={(event) => setOriginalAmount(event.target.value)}
-                      required
-                      step="0.01"
-                      type="number"
-                      value={originalAmount}
-                    />
-                  </label>
-
-                  <label className="field-group">
-                    Interest rate
-                    <Input
-                      min="0"
-                      onChange={(event) => setInterestRate(event.target.value)}
-                      step="0.01"
-                      type="number"
-                      value={interestRate}
-                    />
-                  </label>
-
-                  <label className="field-group">
-                    Due date
-                    <Input
-                      onChange={(event) => setDueDate(event.target.value)}
-                      type="date"
-                      value={dueDate}
-                    />
-                  </label>
-
-                  <label className="field-group">
-                    Notes
-                    <Input
-                      onChange={(event) => setNotes(event.target.value)}
-                      placeholder="Monthly card balance"
-                      value={notes}
-                    />
-                  </label>
-
-                  <Button disabled={isSubmittingDebt} type="submit">
-                    <Plus aria-hidden="true" size={18} />
-                    {isSubmittingDebt ? 'Saving...' : 'Save debt'}
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CreditCard aria-hidden="true" size={20} />
-                <h2>Record payment</h2>
-              </CardHeader>
-              <CardContent>
-                <form className="stack-form" onSubmit={handleCreatePayment}>
-                  <label className="field-group">
-                    Debt
-                    <select
-                      className="field-input"
-                      disabled={debts.length === 0}
-                      onChange={(event) =>
-                        setSelectedDebt(debts.find((debt) => debt.id === event.target.value) ?? null)
-                      }
-                      value={selectedDebt?.id ?? ''}
-                    >
-                      {debts.map((debt) => (
-                        <option key={debt.id} value={debt.id}>
-                          {debt.person_name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-
-                  <label className="field-group">
-                    Payment account
-                    <select
-                      className="field-input"
-                      disabled={accounts.length === 0}
-                      onChange={(event) => setPaymentAccountId(event.target.value)}
-                      value={paymentAccountId}
-                    >
-                      {accounts.map((account) => (
-                        <option key={account.id} value={account.id}>
-                          {account.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-
-                  <label className="field-group">
-                    Amount
-                    <Input
-                      min="0.01"
-                      onChange={(event) => setPaymentAmount(event.target.value)}
-                      required
-                      step="0.01"
-                      type="number"
-                      value={paymentAmount}
-                    />
-                  </label>
-
-                  <label className="field-group">
-                    Date
-                    <Input
-                      onChange={(event) => setPaymentDate(event.target.value)}
-                      required
-                      type="date"
-                      value={paymentDate}
-                    />
-                  </label>
-
-                  <label className="field-group">
-                    Notes
-                    <Input
-                      onChange={(event) => setPaymentNotes(event.target.value)}
-                      placeholder="Partial payment"
-                      value={paymentNotes}
-                    />
-                  </label>
-
-                  <Button disabled={isSubmittingPayment || !selectedDebt} type="submit">
-                    <CreditCard aria-hidden="true" size={18} />
-                    {isSubmittingPayment ? 'Recording...' : 'Record payment'}
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
-          </section>
-
-          <section className="content-grid">
             <section className="list-panel">
               <div className="section-heading">
                 <h2>Debt list</h2>
-                <span>{isLoading ? 'Loading' : `${debts.length} debts`}</span>
+                <span className="inline-actions">
+                  <span>{isLoading ? 'Loading' : `${debts.length} debts`}</span>
+                  <Button onClick={() => setActiveModal('debt')} type="button">
+                    <Plus aria-hidden="true" size={18} />
+                    Add debt
+                  </Button>
+                  <Button onClick={() => setActiveModal('payment')} type="button" variant="secondary">
+                    <CreditCard aria-hidden="true" size={18} />
+                    Record payment
+                  </Button>
+                </span>
               </div>
 
               {debts.length === 0 && !isLoading ? (
@@ -493,6 +344,7 @@ export function DebtsPage() {
                           <span>
                             <strong>{debt.person_name}</strong>
                             <small>{debt.type.replace('_', ' ')} / {debt.status}</small>
+                            <SyncBadge status={(debt as { sync_status?: string }).sync_status} />
                           </span>
                           <span>{formatCurrency(debt.remaining_amount, selectedWorkspace.currency)}</span>
                         </button>
@@ -567,6 +419,165 @@ export function DebtsPage() {
               </CardContent>
             </Card>
           </section>
+
+          <Modal
+            description="Track a borrowed, lent, or credit obligation."
+            isOpen={activeModal === 'debt'}
+            onClose={() => setActiveModal(null)}
+            title="Add debt"
+          >
+            <form className="stack-form" onSubmit={handleCreateDebt}>
+              <label className="field-group">
+                Type
+                <select
+                  className="field-input"
+                  onChange={(event) => setType(event.target.value as DebtType)}
+                  value={type}
+                >
+                  {debtTypeOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="field-group">
+                Person or institution
+                <Input
+                  onChange={(event) => setPersonName(event.target.value)}
+                  placeholder="Bank or lender name"
+                  required
+                  value={personName}
+                />
+              </label>
+
+              <label className="field-group">
+                Original amount
+                <Input
+                  min="0.01"
+                  onChange={(event) => setOriginalAmount(event.target.value)}
+                  required
+                  step="0.01"
+                  type="number"
+                  value={originalAmount}
+                />
+              </label>
+
+              <label className="field-group">
+                Interest rate
+                <Input
+                  min="0"
+                  onChange={(event) => setInterestRate(event.target.value)}
+                  step="0.01"
+                  type="number"
+                  value={interestRate}
+                />
+              </label>
+
+              <label className="field-group">
+                Due date
+                <Input
+                  onChange={(event) => setDueDate(event.target.value)}
+                  type="date"
+                  value={dueDate}
+                />
+              </label>
+
+              <label className="field-group">
+                Notes
+                <Input
+                  onChange={(event) => setNotes(event.target.value)}
+                  placeholder="Monthly card balance"
+                  value={notes}
+                />
+              </label>
+
+              <Button disabled={isSubmittingDebt} type="submit">
+                <Plus aria-hidden="true" size={18} />
+                {isSubmittingDebt ? 'Saving...' : 'Save debt'}
+              </Button>
+            </form>
+          </Modal>
+
+          <Modal
+            description="Record a ledger-backed payment for the selected debt."
+            isOpen={activeModal === 'payment'}
+            onClose={() => setActiveModal(null)}
+            title="Record payment"
+          >
+            <form className="stack-form" onSubmit={handleCreatePayment}>
+              <label className="field-group">
+                Debt
+                <select
+                  className="field-input"
+                  disabled={debts.length === 0}
+                  onChange={(event) =>
+                    setSelectedDebt(debts.find((debt) => debt.id === event.target.value) ?? null)
+                  }
+                  value={selectedDebt?.id ?? ''}
+                >
+                  {debts.map((debt) => (
+                    <option key={debt.id} value={debt.id}>
+                      {debt.person_name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="field-group">
+                Payment account
+                <select
+                  className="field-input"
+                  disabled={accounts.length === 0}
+                  onChange={(event) => setPaymentAccountId(event.target.value)}
+                  value={paymentAccountId}
+                >
+                  {accounts.map((account) => (
+                    <option key={account.id} value={account.id}>
+                      {account.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="field-group">
+                Amount
+                <Input
+                  min="0.01"
+                  onChange={(event) => setPaymentAmount(event.target.value)}
+                  required
+                  step="0.01"
+                  type="number"
+                  value={paymentAmount}
+                />
+              </label>
+
+              <label className="field-group">
+                Date
+                <Input
+                  onChange={(event) => setPaymentDate(event.target.value)}
+                  required
+                  type="date"
+                  value={paymentDate}
+                />
+              </label>
+
+              <label className="field-group">
+                Notes
+                <Input
+                  onChange={(event) => setPaymentNotes(event.target.value)}
+                  placeholder="Partial payment"
+                  value={paymentNotes}
+                />
+              </label>
+
+              <Button disabled={isSubmittingPayment || !selectedDebt} type="submit">
+                <CreditCard aria-hidden="true" size={18} />
+                {isSubmittingPayment ? 'Recording...' : 'Record payment'}
+              </Button>
+            </form>
+          </Modal>
         </>
       )}
     </div>

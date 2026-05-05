@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Archive, Pencil, Plus, Save, X } from 'lucide-react'
-import { Button, Card, CardContent, CardHeader, Input } from '../../../components/ui'
+import { SyncBadge } from '../../../components/common/SyncBadge'
+import { Button, Input, Modal } from '../../../components/ui'
 import { categoryTypeOptions } from '../../../constants/options'
 import type { Category, CategoryType } from '../../../types/domain'
 import { useWorkspaceOutlet } from '../../../hooks/useWorkspaceOutlet'
@@ -22,6 +23,7 @@ export function CategoriesPage() {
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [archivingCategoryId, setArchivingCategoryId] = useState('')
   const [editingCategory, setEditingCategory] = useState<CategoryEditDraft | null>(null)
   const [savingCategoryId, setSavingCategoryId] = useState('')
@@ -61,6 +63,7 @@ export function CategoriesPage() {
         workspaceId: selectedWorkspace.id,
       })
       setName('')
+      setIsCreateModalOpen(false)
       await loadCategories()
     } catch (createError) {
       setError(createError instanceof Error ? createError.message : 'Unable to create category.')
@@ -127,60 +130,17 @@ export function CategoriesPage() {
       {!selectedWorkspace ? (
         <p className="empty-state">Create a space before adding categories.</p>
       ) : (
-        <section className="content-grid">
-          <Card>
-            <CardHeader>
-              <Plus aria-hidden="true" size={20} />
-              <h2>Add category</h2>
-            </CardHeader>
-            <CardContent>
-              <form className="stack-form" onSubmit={handleCreateCategory}>
-                <label className="field-group">
-                  Name
-                  <Input
-                    onChange={(event) => setName(event.target.value)}
-                    placeholder="Groceries"
-                    required
-                    value={name}
-                  />
-                </label>
-
-                <label className="field-group">
-                  Type
-                  <select
-                    className="field-input"
-                    onChange={(event) => setType(event.target.value as CategoryType)}
-                    value={type}
-                  >
-                    {categoryTypeOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <label className="field-group">
-                  Color
-                  <Input
-                    onChange={(event) => setColor(event.target.value)}
-                    type="color"
-                    value={color}
-                  />
-                </label>
-
-                <Button disabled={isCreating} type="submit">
-                  <Plus aria-hidden="true" size={18} />
-                  {isCreating ? 'Adding...' : 'Add category'}
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
-
+        <>
           <section className="list-panel">
             <div className="section-heading">
               <h2>Category settings</h2>
-              <span>{isLoading ? 'Loading' : `${categories.length} visible`}</span>
+              <span className="inline-actions">
+                <span>{isLoading ? 'Loading' : `${categories.length} visible`}</span>
+                <Button onClick={() => setIsCreateModalOpen(true)} type="button">
+                  <Plus aria-hidden="true" size={18} />
+                  Add category
+                </Button>
+              </span>
             </div>
 
             {categories.length === 0 && !isLoading ? (
@@ -226,6 +186,7 @@ export function CategoriesPage() {
                       <span>
                         <strong>{category.name}</strong>
                         <small>{category.type.replace('_', ' ')}</small>
+                        <SyncBadge status={(category as { sync_status?: string }).sync_status} />
                       </span>
                     )}
                     <span className="category-meta">
@@ -286,7 +247,55 @@ export function CategoriesPage() {
               </div>
             )}
           </section>
-        </section>
+
+          <Modal
+            description="Create a custom category for the active workspace."
+            isOpen={isCreateModalOpen}
+            onClose={() => setIsCreateModalOpen(false)}
+            title="Add category"
+          >
+            <form className="stack-form" onSubmit={handleCreateCategory}>
+              <label className="field-group">
+                Name
+                <Input
+                  onChange={(event) => setName(event.target.value)}
+                  placeholder="Groceries"
+                  required
+                  value={name}
+                />
+              </label>
+
+              <label className="field-group">
+                Type
+                <select
+                  className="field-input"
+                  onChange={(event) => setType(event.target.value as CategoryType)}
+                  value={type}
+                >
+                  {categoryTypeOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="field-group">
+                Color
+                <Input
+                  onChange={(event) => setColor(event.target.value)}
+                  type="color"
+                  value={color}
+                />
+              </label>
+
+              <Button disabled={isCreating} type="submit">
+                <Plus aria-hidden="true" size={18} />
+                {isCreating ? 'Adding...' : 'Add category'}
+              </Button>
+            </form>
+          </Modal>
+        </>
       )}
     </div>
   )

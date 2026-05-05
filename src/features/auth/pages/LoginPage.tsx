@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { LogIn } from 'lucide-react'
 import { Button, Input } from '../../../components/ui'
+import { PasswordInput } from '../../../components/common/PasswordInput'
 import { routes } from '../../../app/routes'
 import { signInWithEmail } from '../services/authService'
 import { AuthFormShell } from '../components/AuthFormShell'
@@ -42,6 +43,7 @@ export function LoginPage() {
           </span>
         </>
       }
+      supportPoints={['Pick the right space after login', 'Quick Add stays one tap away']}
       title="Sign in"
     >
       <form className="auth-form" onSubmit={handleSubmit}>
@@ -58,12 +60,11 @@ export function LoginPage() {
 
         <label className="field-group">
           Password
-          <Input
+          <PasswordInput
             autoComplete="current-password"
             minLength={6}
             onChange={(event) => setPassword(event.target.value)}
             required
-            type="password"
             value={password}
           />
         </label>

@@ -1,9 +1,12 @@
 import { supabase } from '../../../lib/supabase'
+import { requireOnline } from '../../../lib/offline'
 import type { CurrencyCode, Profile } from '../../../types/domain'
 
 const SELECTED_WORKSPACE_KEY = 'fundspace:selected-workspace-id'
 
 export async function signInWithEmail(email: string, password: string) {
+  requireOnline('Signing in')
+
   const result = await supabase.auth.signInWithPassword({ email, password })
 
   if (!result.error) {
@@ -14,6 +17,8 @@ export async function signInWithEmail(email: string, password: string) {
 }
 
 export async function signUpWithEmail(email: string, password: string) {
+  requireOnline('Creating an account')
+
   const result = await supabase.auth.signUp({ email, password })
 
   if (!result.error) {
@@ -24,6 +29,8 @@ export async function signUpWithEmail(email: string, password: string) {
 }
 
 export async function sendPasswordReset(email: string) {
+  requireOnline('Password reset')
+
   return supabase.auth.resetPasswordForEmail(email, {
     redirectTo: `${window.location.origin}/login`,
   })
@@ -35,6 +42,8 @@ export async function signOut() {
 }
 
 export async function getCurrentProfile() {
+  requireOnline('Profile settings')
+
   const { data: userData, error: userError } = await supabase.auth.getUser()
 
   if (userError) {
@@ -58,6 +67,8 @@ export async function updateCurrentProfile(input: {
   defaultCurrency?: CurrencyCode
   fullName: string
 }) {
+  requireOnline('Saving profile settings')
+
   const { data: userData, error: userError } = await supabase.auth.getUser()
 
   if (userError) {
@@ -101,6 +112,8 @@ export async function updateProfileName(fullName: string) {
 }
 
 export async function updateCurrentPassword(password: string) {
+  requireOnline('Updating password')
+
   return supabase.auth.updateUser({
     password,
   })

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { ChartNoAxesCombined } from 'lucide-react'
+import { ChartNoAxesCombined, Download } from 'lucide-react'
 import { Button, Card, CardContent, CardHeader, Input } from '../../../components/ui'
 import { monthOptions } from '../../../constants/options'
 import {
@@ -11,6 +11,7 @@ import {
 import { formatCurrency } from '../../../lib/formatCurrency'
 import { useWorkspaceOutlet } from '../../../hooks/useWorkspaceOutlet'
 import { loadAdvancedReportData } from '../services/reportService'
+import type { CSSProperties } from 'react'
 
 const currentDate = new Date()
 
@@ -24,6 +25,28 @@ const emptyReports: ReportsState = {
   debts: [],
   savingsBuckets: [],
   transactions: [],
+}
+
+function getPercent(value: number, max: number) {
+  if (max <= 0) {
+    return 0
+  }
+
+  return Math.min(100, Math.max(0, (value / max) * 100))
+}
+
+function escapeCsvValue(value: string | number | null | undefined) {
+  const text = String(value ?? '')
+
+  if (/[",\n]/.test(text)) {
+    return `"${text.replace(/"/g, '""')}"`
+  }
+
+  return text
+}
+
+function buildCsv(rows: Array<Array<string | number | null | undefined>>) {
+  return rows.map((row) => row.map(escapeCsvValue).join(',')).join('\n')
 }
 
 export function ReportsPage() {
@@ -105,6 +128,152 @@ export function ReportsPage() {
       .sort((first, second) => second.total - first.total)
   }, [reports.categories, reports.transactions])
 
+  const dailyCashFlow = useMemo(() => {
+    const daysInMonth = new Date(Number(year), Number(month), 0).getDate()
+    const days = Array.from({ length: daysInMonth }, (_, index) => {
+      const day = index + 1
+      const dateKey = `${year}-${month.padStart(2, '0')}-${String(day).padStart(2, '0')}`
+
+      return {
+        dateKey,
+        day,
+        expenses: 0,
+        income: 0,
+      }
+    })
+    const dayMap = new Map(days.map((day) => [day.dateKey, day]))
+
+    reports.transactions.forEach((transaction) => {
+      const day = dayMap.get(transaction.transaction_date)
+
+      if (!day) {
+        return
+      }
+
+      if (transaction.direction === 'in' && transaction.type !== 'transfer_in') {
+        day.income += transaction.amount
+      }
+
+      if (transaction.direction === 'out' && transaction.type !== 'transfer_out') {
+        day.expenses += transaction.amount
+      }
+    })
+
+    return days
+  }, [month, reports.transactions, year])
+
+  const maxDailyCashFlow = useMemo(
+    () => Math.max(0, ...dailyCashFlow.map((day) => Math.max(day.income, day.expenses))),
+    [dailyCashFlow],
+  )
+
+  const maxCategorySpending = useMemo(
+    () => Math.max(0, ...spendingByCategory.map((item) => item.total)),
+    [spendingByCategory],
+  )
+
+  const savingsProgress = useMemo(
+    () =>
+      reports.savingsBuckets.map((bucket) => ({
+        bucket,
+        progress: getPercent(bucket.current_amount, bucket.target_amount),
+      })),
+    [reports.savingsBuckets],
+  )
+
+  const selectedMonthLabel = useMemo(
+    () => monthOptions.find((option) => option.value === Number(month))?.label ?? month,
+    [month],
+  )
+
+  const handleExportCsv = () => {
+    if (!selectedWorkspace) {
+      return
+    }
+
+    const csvRows: Array<Array<string | number | null | undefined>> = [
+      ['FundSpace report export'],
+      ['Space', selectedWorkspace.name],
+      ['Period', `${selectedMonthLabel} ${year}`],
+      [],
+      ['Summary'],
+      ['Total balance', summary.totalBalance],
+      ['Income', summary.income],
+      ['Expenses', summary.expenses],
+      ['Business revenue', summary.businessRevenue],
+      ['Business net profit', summary.businessNetProfit],
+      [],
+      ['Transactions'],
+      ['Date', 'Type', 'Direction', 'Category', 'Amount', 'Notes'],
+      ...reports.transactions.map((transaction) => [
+        transaction.transaction_date,
+        transaction.type,
+        transaction.direction,
+        reports.categories.find((category) => category.id === transaction.category_id)?.name ?? 'Uncategorized',
+        transaction.amount,
+        transaction.notes,
+      ]),
+      [],
+      ['Spending by category'],
+      ['Category', 'Total'],
+      ...spendingByCategory.map((item) => [item.name, item.total]),
+      [],
+      ['Budget usage'],
+      ['Category', 'Spent', 'Limit', 'Remaining', 'Usage %', 'Status'],
+      ...reports.budgetUsage.map((item) => [
+        reports.categories.find((category) => category.id === item.budget.category_id)?.name ?? 'Category',
+        item.spent,
+        item.budget.limit_amount,
+        item.remaining,
+        item.usagePercentage.toFixed(1),
+        item.status,
+      ]),
+      [],
+      ['Savings'],
+      ['Bucket', 'Current amount', 'Target amount', 'Progress %'],
+      ...reports.savingsBuckets.map((bucket) => [
+        bucket.name,
+        bucket.current_amount,
+        bucket.target_amount,
+        getPercent(bucket.current_amount, bucket.target_amount).toFixed(1),
+      ]),
+      [],
+      ['Debts'],
+      ['Person', 'Type', 'Remaining amount', 'Original amount', 'Status', 'Due date'],
+      ...reports.debts.map((debt) => [
+        debt.person_name,
+        debt.type,
+        debt.remaining_amount,
+        debt.original_amount,
+        debt.status,
+        debt.due_date,
+      ]),
+      [],
+      ['Business sales'],
+      ['Business', 'Date', 'Quantity', 'Revenue', 'COGS', 'Gross profit', 'Notes'],
+      ...reports.businessChildren.flatMap((item) =>
+        item.sales.map((sale) => [
+          item.business.name,
+          sale.sale_date,
+          sale.quantity,
+          sale.revenue,
+          sale.cogs,
+          sale.gross_profit,
+          sale.notes,
+        ]),
+      ),
+    ]
+    const blob = new Blob([buildCsv(csvRows)], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    const filenameSpace = selectedWorkspace.name.replace(/[^a-z0-9-]+/gi, '-').replace(/^-+|-+$/g, '').toLowerCase()
+
+    link.href = url
+    link.download = `fundspace-${filenameSpace || 'space'}-${year}-${month.padStart(2, '0')}-report.csv`
+    link.click()
+    URL.revokeObjectURL(url)
+  }
+
   return (
     <div className="page-stack">
       <header className="page-header">
@@ -123,7 +292,7 @@ export function ReportsPage() {
         <p className="empty-state">Create a space before opening advanced reports.</p>
       ) : (
         <>
-          <section className="filter-bar">
+          <section className="filter-bar reports-filter-bar">
             <select
               className="field-input"
               onChange={(event) => setMonth(event.target.value)}
@@ -146,6 +315,11 @@ export function ReportsPage() {
 
             <Button disabled={isLoading} onClick={() => void loadReports()} type="button">
               Refresh reports
+            </Button>
+
+            <Button disabled={isLoading} onClick={handleExportCsv} type="button" variant="secondary">
+              <Download aria-hidden="true" size={16} />
+              Export CSV
             </Button>
           </section>
 
@@ -197,6 +371,131 @@ export function ReportsPage() {
                 </p>
               </CardContent>
             </Card>
+          </section>
+
+          <section className="content-grid reports-chart-grid">
+            <section className="list-panel">
+              <div className="section-heading">
+                <h2>Cash flow graph</h2>
+                <span>{selectedMonthLabel} {year}</span>
+              </div>
+
+              <div className="report-column-chart" aria-label="Daily income and expense chart">
+                {dailyCashFlow.map((day) => (
+                  <div className="report-column" key={day.dateKey}>
+                    <div className="report-column-bars">
+                      <span
+                        className="report-column-bar report-column-bar-income"
+                        style={{ '--bar-height': `${getPercent(day.income, maxDailyCashFlow)}%` } as CSSProperties}
+                        title={`Day ${day.day} income: ${formatCurrency(day.income, selectedWorkspace.currency)}`}
+                      />
+                      <span
+                        className="report-column-bar report-column-bar-expense"
+                        style={{ '--bar-height': `${getPercent(day.expenses, maxDailyCashFlow)}%` } as CSSProperties}
+                        title={`Day ${day.day} expenses: ${formatCurrency(day.expenses, selectedWorkspace.currency)}`}
+                      />
+                    </div>
+                    <small>{day.day}</small>
+                  </div>
+                ))}
+              </div>
+              <div className="report-chart-legend">
+                <span><i className="legend-dot legend-dot-income" />Income</span>
+                <span><i className="legend-dot legend-dot-expense" />Expenses</span>
+              </div>
+            </section>
+
+            <section className="list-panel">
+              <div className="section-heading">
+                <h2>Category graph</h2>
+                <span>Top spending</span>
+              </div>
+
+              {spendingByCategory.length === 0 && !isLoading ? (
+                <p className="empty-state">No category graph yet for this period.</p>
+              ) : (
+                <div className="report-bar-list">
+                  {spendingByCategory.slice(0, 8).map((item) => (
+                    <div className="report-bar-row" key={item.name}>
+                      <span>
+                        <strong>{item.name}</strong>
+                        <small>{formatCurrency(item.total, selectedWorkspace.currency)}</small>
+                      </span>
+                      <div className="report-bar-track">
+                        <i
+                          className="report-bar-fill report-bar-fill-expense"
+                          style={{ '--bar-width': `${getPercent(item.total, maxCategorySpending)}%` } as CSSProperties}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+          </section>
+
+          <section className="content-grid reports-chart-grid">
+            <section className="list-panel">
+              <div className="section-heading">
+                <h2>Budget graph</h2>
+                <span>{reports.budgetUsage.length} budgets</span>
+              </div>
+
+              {reports.budgetUsage.length === 0 ? (
+                <p className="empty-state">No budget graph yet for this period.</p>
+              ) : (
+                <div className="report-bar-list">
+                  {reports.budgetUsage.map((item) => {
+                    const category = reports.categories.find(
+                      (entry) => entry.id === item.budget.category_id,
+                    )
+
+                    return (
+                      <div className="report-bar-row" key={item.budget.id}>
+                        <span>
+                          <strong>{category?.name ?? 'Category'}</strong>
+                          <small>{item.usagePercentage.toFixed(1)}% used</small>
+                        </span>
+                        <div className="report-bar-track">
+                          <i
+                            className={`report-bar-fill report-bar-fill-${item.status}`}
+                            style={{ '--bar-width': `${Math.min(100, item.usagePercentage)}%` } as CSSProperties}
+                          />
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </section>
+
+            <section className="list-panel">
+              <div className="section-heading">
+                <h2>Savings graph</h2>
+                <span>{reports.savingsBuckets.length} buckets</span>
+              </div>
+
+              {savingsProgress.length === 0 ? (
+                <p className="empty-state">No savings graph yet.</p>
+              ) : (
+                <div className="report-bar-list">
+                  {savingsProgress.map(({ bucket, progress }) => (
+                    <div className="report-bar-row" key={bucket.id}>
+                      <span>
+                        <strong>{bucket.name}</strong>
+                        <small>{progress.toFixed(1)}% funded</small>
+                      </span>
+                      <div className="report-bar-track">
+                        <i
+                          className="report-bar-fill report-bar-fill-income"
+                          style={{ '--bar-width': `${progress}%` } as CSSProperties}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
           </section>
 
           <section className="content-grid">

@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react
 import { Calculator, Package, Plus, ReceiptText, Store } from 'lucide-react'
 import { EmptyState } from '../../../components/common/EmptyState'
 import { PageHeader } from '../../../components/common/PageHeader'
-import { Button, Card, CardContent, CardHeader, Input } from '../../../components/ui'
+import { SyncBadge } from '../../../components/common/SyncBadge'
+import { Button, Card, CardContent, CardHeader, Input, Modal } from '../../../components/ui'
 import {
   calculateCOGS,
   calculateGrossProfit,
@@ -88,6 +89,9 @@ export function BusinessPage() {
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [activeModal, setActiveModal] = useState<
+    'business' | 'product' | 'ingredient' | 'sale' | 'expense' | null
+  >(null)
   const [businessEditDraft, setBusinessEditDraft] = useState<BusinessEditDraft | null>(null)
   const [productEditDraft, setProductEditDraft] = useState<ProductEditDraft | null>(null)
   const [isSavingBusiness, setIsSavingBusiness] = useState(false)
@@ -206,6 +210,7 @@ export function BusinessPage() {
       setBusinessName('')
       setBusinessDescription('')
       setCapitalAmount('0')
+      setActiveModal(null)
       await loadPageData()
     } catch (createError) {
       setError(createError instanceof Error ? createError.message : 'Unable to create business.')
@@ -238,6 +243,7 @@ export function BusinessPage() {
       setProductDescription('')
       setUnitsProduced('1')
       setSellingPrice('0')
+      setActiveModal(null)
       await loadPageData()
     } catch (createError) {
       setError(createError instanceof Error ? createError.message : 'Unable to create product.')
@@ -269,6 +275,7 @@ export function BusinessPage() {
       setIngredientName('')
       setIngredientQuantity('1')
       setIngredientCost('0')
+      setActiveModal(null)
       await loadPageData()
     } catch (createError) {
       setError(createError instanceof Error ? createError.message : 'Unable to add ingredient.')
@@ -295,6 +302,7 @@ export function BusinessPage() {
       setSaleQuantity('1')
       setSalePrice(selectedProduct?.selling_price.toString() ?? '0')
       setSaleNotes('')
+      setActiveModal(null)
       await loadPageData()
     } catch (createError) {
       setError(createError instanceof Error ? createError.message : 'Unable to record sale.')
@@ -319,6 +327,7 @@ export function BusinessPage() {
       })
       setExpenseAmount('')
       setExpenseNotes('')
+      setActiveModal(null)
       await loadPageData()
     } catch (createError) {
       setError(createError instanceof Error ? createError.message : 'Unable to record expense.')
@@ -410,74 +419,38 @@ export function BusinessPage() {
         />
       ) : (
         <>
-          <section className="content-grid">
-            <Card>
-              <CardHeader>
-                <Store aria-hidden="true" size={20} />
-                <h2>Business profile</h2>
-              </CardHeader>
-              <CardContent>
-                <form className="stack-form" onSubmit={handleCreateBusiness}>
-                  <label className="field-group">
-                    Name
-                    <Input onChange={(event) => setBusinessName(event.target.value)} required value={businessName} />
-                  </label>
-                  <label className="field-group">
-                    Description
-                    <Input onChange={(event) => setBusinessDescription(event.target.value)} value={businessDescription} />
-                  </label>
-                  <label className="field-group">
-                    Capital amount
-                    <Input min="0" onChange={(event) => setCapitalAmount(event.target.value)} step="0.01" type="number" value={capitalAmount} />
-                  </label>
-                  <Button disabled={isSubmitting} type="submit">
-                    <Plus aria-hidden="true" size={18} />
-                    {isSubmitting ? 'Saving...' : 'Create business'}
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <Package aria-hidden="true" size={20} />
-                <h2>Product costing</h2>
-              </CardHeader>
-              <CardContent>
-                <form className="stack-form" onSubmit={handleCreateProduct}>
-                  <label className="field-group">
-                    Business
-                    <select className="field-input" onChange={(event) => setSelectedBusinessId(event.target.value)} value={selectedBusinessId}>
-                      {businesses.map((business) => (
-                        <option key={business.id} value={business.id}>
-                          {business.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="field-group">
-                    Product name
-                    <Input onChange={(event) => setProductName(event.target.value)} required value={productName} />
-                  </label>
-                  <label className="field-group">
-                    Description
-                    <Input onChange={(event) => setProductDescription(event.target.value)} value={productDescription} />
-                  </label>
-                  <label className="field-group">
-                    Units produced
-                    <Input min="0.01" onChange={(event) => setUnitsProduced(event.target.value)} required step="0.01" type="number" value={unitsProduced} />
-                  </label>
-                  <label className="field-group">
-                    Selling price
-                    <Input min="0" onChange={(event) => setSellingPrice(event.target.value)} required step="0.01" type="number" value={sellingPrice} />
-                  </label>
-                  <Button disabled={isSubmitting || !selectedBusinessId} type="submit">
-                    <Plus aria-hidden="true" size={18} />
-                    {isSubmitting ? 'Saving...' : 'Create product'}
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
+          <section className="section-surface section-surface-hero">
+            <div className="section-heading section-heading-stack">
+              <div>
+                <p className="eyebrow">Business actions</p>
+                <h2>Keep records focused, open forms only when needed</h2>
+                <p className="section-description">
+                  Create setup records, add costs, or encode operations from compact modal flows.
+                </p>
+              </div>
+              <div className="empty-state-actions">
+                <Button onClick={() => setActiveModal('business')} type="button">
+                  <Store aria-hidden="true" size={18} />
+                  Create business
+                </Button>
+                <Button onClick={() => setActiveModal('product')} type="button" variant="secondary">
+                  <Package aria-hidden="true" size={18} />
+                  Create product
+                </Button>
+                <Button onClick={() => setActiveModal('ingredient')} type="button" variant="secondary">
+                  <Calculator aria-hidden="true" size={18} />
+                  Add ingredient
+                </Button>
+                <Button onClick={() => setActiveModal('sale')} type="button" variant="secondary">
+                  <ReceiptText aria-hidden="true" size={18} />
+                  Record sale
+                </Button>
+                <Button onClick={() => setActiveModal('expense')} type="button" variant="secondary">
+                  <Store aria-hidden="true" size={18} />
+                  Record expense
+                </Button>
+              </div>
+            </div>
           </section>
 
           <section className="content-grid">
@@ -517,6 +490,7 @@ export function BusinessPage() {
                           </option>
                         ))}
                       </select>
+                      <SyncBadge status={(selectedBusiness as { sync_status?: string }).sync_status} />
                     </label>
                     <label className="field-group">
                       Name
@@ -612,6 +586,7 @@ export function BusinessPage() {
                           </option>
                         ))}
                       </select>
+                      <SyncBadge status={(selectedProduct as { sync_status?: string }).sync_status} />
                     </label>
                     <label className="field-group">
                       Product name
@@ -692,52 +667,16 @@ export function BusinessPage() {
             </Card>
           </section>
 
-          <section className="content-grid">
-            <Card>
-              <CardHeader>
-                <Calculator aria-hidden="true" size={20} />
-                <h2>Ingredient form</h2>
-              </CardHeader>
-              <CardContent>
-                <form className="stack-form" onSubmit={handleCreateIngredient}>
-                  <label className="field-group">
-                    Product
-                    <select className="field-input" onChange={(event) => setSelectedProductId(event.target.value)} value={selectedProductId}>
-                      {products.map((product) => (
-                        <option key={product.id} value={product.id}>
-                          {product.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="field-group">
-                    Ingredient
-                    <Input onChange={(event) => setIngredientName(event.target.value)} required value={ingredientName} />
-                  </label>
-                  <label className="field-group">
-                    Quantity
-                    <Input min="0.01" onChange={(event) => setIngredientQuantity(event.target.value)} required step="0.01" type="number" value={ingredientQuantity} />
-                  </label>
-                  <label className="field-group">
-                    Unit
-                    <Input onChange={(event) => setIngredientUnit(event.target.value)} required value={ingredientUnit} />
-                  </label>
-                  <label className="field-group">
-                    Total cost
-                    <Input min="0" onChange={(event) => setIngredientCost(event.target.value)} required step="0.01" type="number" value={ingredientCost} />
-                  </label>
-                  <Button disabled={isSubmitting || !selectedProductId} type="submit">
-                    <Plus aria-hidden="true" size={18} />
-                    {isSubmitting ? 'Saving...' : 'Add ingredient'}
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
-
-            <section className="list-panel">
+          <section className="list-panel">
               <div className="section-heading">
                 <h2>Cost summary</h2>
-                <span>{isLoading ? 'Loading' : `${ingredients.length} ingredients`}</span>
+                <span className="inline-actions">
+                  <span>{isLoading ? 'Loading' : `${ingredients.length} ingredients`}</span>
+                  <Button onClick={() => setActiveModal('ingredient')} type="button" variant="secondary">
+                    <Calculator aria-hidden="true" size={18} />
+                    Add ingredient
+                  </Button>
+                </span>
               </div>
               <div className="record-list">
                 <div className="record-row">
@@ -766,122 +705,23 @@ export function BusinessPage() {
                   </>
                 )}
               </div>
-            </section>
-          </section>
-
-          <section className="content-grid">
-            <Card>
-              <CardHeader>
-                <ReceiptText aria-hidden="true" size={20} />
-                <h2>Sale encoding</h2>
-              </CardHeader>
-              <CardContent>
-                <form className="stack-form" onSubmit={handleCreateSale}>
-                  <label className="field-group">
-                    Account
-                    <select className="field-input" onChange={(event) => setSaleAccountId(event.target.value)} value={saleAccountId}>
-                      {accounts.map((account) => (
-                        <option key={account.id} value={account.id}>
-                          {account.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="field-group">
-                    Product
-                    <select
-                      className="field-input"
-                      onChange={(event) => {
-                        const nextProduct = products.find((product) => product.id === event.target.value) ?? null
-                        setSelectedProductId(event.target.value)
-                        setSalePrice(nextProduct?.selling_price.toString() ?? '0')
-                      }}
-                      value={selectedProductId}
-                    >
-                      {products.map((product) => (
-                        <option key={product.id} value={product.id}>
-                          {product.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="field-group">
-                    Quantity
-                    <Input min="0.01" onChange={(event) => setSaleQuantity(event.target.value)} required step="0.01" type="number" value={saleQuantity} />
-                  </label>
-                  <label className="field-group">
-                    Selling price
-                    <Input min="0" onChange={(event) => setSalePrice(event.target.value)} required step="0.01" type="number" value={salePrice} />
-                  </label>
-                  <label className="field-group">
-                    Sale date
-                    <Input onChange={(event) => setSaleDate(event.target.value)} required type="date" value={saleDate} />
-                  </label>
-                  <label className="field-group">
-                    Notes
-                    <Input onChange={(event) => setSaleNotes(event.target.value)} value={saleNotes} />
-                  </label>
-                  <Button disabled={isSubmitting || !selectedBusinessId || !selectedProductId} type="submit">
-                    <ReceiptText aria-hidden="true" size={18} />
-                    {isSubmitting ? 'Saving...' : 'Record sale'}
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <Store aria-hidden="true" size={20} />
-                <h2>Business expense</h2>
-              </CardHeader>
-              <CardContent>
-                <form className="stack-form" onSubmit={handleCreateExpense}>
-                  <label className="field-group">
-                    Account
-                    <select className="field-input" onChange={(event) => setExpenseAccountId(event.target.value)} value={expenseAccountId}>
-                      {accounts.map((account) => (
-                        <option key={account.id} value={account.id}>
-                          {account.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="field-group">
-                    Category
-                    <select className="field-input" onChange={(event) => setExpenseCategoryId(event.target.value)} value={expenseCategoryId}>
-                      {businessExpenseCategories.map((category) => (
-                        <option key={category.id} value={category.id}>
-                          {category.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="field-group">
-                    Amount
-                    <Input min="0.01" onChange={(event) => setExpenseAmount(event.target.value)} required step="0.01" type="number" value={expenseAmount} />
-                  </label>
-                  <label className="field-group">
-                    Expense date
-                    <Input onChange={(event) => setExpenseDate(event.target.value)} required type="date" value={expenseDate} />
-                  </label>
-                  <label className="field-group">
-                    Notes
-                    <Input onChange={(event) => setExpenseNotes(event.target.value)} value={expenseNotes} />
-                  </label>
-                  <Button disabled={isSubmitting || !selectedBusinessId} type="submit">
-                    <Store aria-hidden="true" size={18} />
-                    {isSubmitting ? 'Saving...' : 'Record expense'}
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
           </section>
 
           <section className="content-grid">
             <section className="list-panel">
               <div className="section-heading">
                 <h2>P&amp;L snapshot</h2>
-                <span>{selectedBusiness?.name ?? 'No business selected'}</span>
+                <span className="inline-actions">
+                  <span>{selectedBusiness?.name ?? 'No business selected'}</span>
+                  <Button onClick={() => setActiveModal('sale')} type="button" variant="secondary">
+                    <ReceiptText aria-hidden="true" size={18} />
+                    Record sale
+                  </Button>
+                  <Button onClick={() => setActiveModal('expense')} type="button" variant="secondary">
+                    <Store aria-hidden="true" size={18} />
+                    Expense
+                  </Button>
+                </span>
               </div>
               <div className="record-list">
                 <div className="record-row">
@@ -974,6 +814,216 @@ export function BusinessPage() {
               </CardContent>
             </Card>
           </section>
+
+          <Modal
+            description="Create a business profile for this business or side hustle space."
+            isOpen={activeModal === 'business'}
+            onClose={() => setActiveModal(null)}
+            title="Create business"
+          >
+            <form className="stack-form" onSubmit={handleCreateBusiness}>
+              <label className="field-group">
+                Name
+                <Input onChange={(event) => setBusinessName(event.target.value)} required value={businessName} />
+              </label>
+              <label className="field-group">
+                Description
+                <Input onChange={(event) => setBusinessDescription(event.target.value)} value={businessDescription} />
+              </label>
+              <label className="field-group">
+                Capital amount
+                <Input min="0" onChange={(event) => setCapitalAmount(event.target.value)} step="0.01" type="number" value={capitalAmount} />
+              </label>
+              <Button disabled={isSubmitting} type="submit">
+                <Plus aria-hidden="true" size={18} />
+                {isSubmitting ? 'Saving...' : 'Create business'}
+              </Button>
+            </form>
+          </Modal>
+
+          <Modal
+            description="Create a product costing profile under the selected business."
+            isOpen={activeModal === 'product'}
+            onClose={() => setActiveModal(null)}
+            title="Create product"
+          >
+            <form className="stack-form" onSubmit={handleCreateProduct}>
+              <label className="field-group">
+                Business
+                <select className="field-input" onChange={(event) => setSelectedBusinessId(event.target.value)} value={selectedBusinessId}>
+                  {businesses.map((business) => (
+                    <option key={business.id} value={business.id}>
+                      {business.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="field-group">
+                Product name
+                <Input onChange={(event) => setProductName(event.target.value)} required value={productName} />
+              </label>
+              <label className="field-group">
+                Description
+                <Input onChange={(event) => setProductDescription(event.target.value)} value={productDescription} />
+              </label>
+              <label className="field-group">
+                Units produced
+                <Input min="0.01" onChange={(event) => setUnitsProduced(event.target.value)} required step="0.01" type="number" value={unitsProduced} />
+              </label>
+              <label className="field-group">
+                Selling price
+                <Input min="0" onChange={(event) => setSellingPrice(event.target.value)} required step="0.01" type="number" value={sellingPrice} />
+              </label>
+              <Button disabled={isSubmitting || !selectedBusinessId} type="submit">
+                <Plus aria-hidden="true" size={18} />
+                {isSubmitting ? 'Saving...' : 'Create product'}
+              </Button>
+            </form>
+          </Modal>
+
+          <Modal
+            description="Add one ingredient or direct cost to the selected product."
+            isOpen={activeModal === 'ingredient'}
+            onClose={() => setActiveModal(null)}
+            title="Add ingredient"
+          >
+            <form className="stack-form" onSubmit={handleCreateIngredient}>
+              <label className="field-group">
+                Product
+                <select className="field-input" onChange={(event) => setSelectedProductId(event.target.value)} value={selectedProductId}>
+                  {products.map((product) => (
+                    <option key={product.id} value={product.id}>
+                      {product.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="field-group">
+                Ingredient
+                <Input onChange={(event) => setIngredientName(event.target.value)} required value={ingredientName} />
+              </label>
+              <label className="field-group">
+                Quantity
+                <Input min="0.01" onChange={(event) => setIngredientQuantity(event.target.value)} required step="0.01" type="number" value={ingredientQuantity} />
+              </label>
+              <label className="field-group">
+                Unit
+                <Input onChange={(event) => setIngredientUnit(event.target.value)} required value={ingredientUnit} />
+              </label>
+              <label className="field-group">
+                Total cost
+                <Input min="0" onChange={(event) => setIngredientCost(event.target.value)} required step="0.01" type="number" value={ingredientCost} />
+              </label>
+              <Button disabled={isSubmitting || !selectedProductId} type="submit">
+                <Plus aria-hidden="true" size={18} />
+                {isSubmitting ? 'Saving...' : 'Add ingredient'}
+              </Button>
+            </form>
+          </Modal>
+
+          <Modal
+            description="Record a product sale for the selected business."
+            isOpen={activeModal === 'sale'}
+            onClose={() => setActiveModal(null)}
+            title="Record sale"
+          >
+            <form className="stack-form" onSubmit={handleCreateSale}>
+              <label className="field-group">
+                Account
+                <select className="field-input" onChange={(event) => setSaleAccountId(event.target.value)} value={saleAccountId}>
+                  {accounts.map((account) => (
+                    <option key={account.id} value={account.id}>
+                      {account.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="field-group">
+                Product
+                <select
+                  className="field-input"
+                  onChange={(event) => {
+                    const nextProduct = products.find((product) => product.id === event.target.value) ?? null
+                    setSelectedProductId(event.target.value)
+                    setSalePrice(nextProduct?.selling_price.toString() ?? '0')
+                  }}
+                  value={selectedProductId}
+                >
+                  {products.map((product) => (
+                    <option key={product.id} value={product.id}>
+                      {product.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="field-group">
+                Quantity
+                <Input min="0.01" onChange={(event) => setSaleQuantity(event.target.value)} required step="0.01" type="number" value={saleQuantity} />
+              </label>
+              <label className="field-group">
+                Selling price
+                <Input min="0" onChange={(event) => setSalePrice(event.target.value)} required step="0.01" type="number" value={salePrice} />
+              </label>
+              <label className="field-group">
+                Sale date
+                <Input onChange={(event) => setSaleDate(event.target.value)} required type="date" value={saleDate} />
+              </label>
+              <label className="field-group">
+                Notes
+                <Input onChange={(event) => setSaleNotes(event.target.value)} value={saleNotes} />
+              </label>
+              <Button disabled={isSubmitting || !selectedBusinessId || !selectedProductId} type="submit">
+                <ReceiptText aria-hidden="true" size={18} />
+                {isSubmitting ? 'Saving...' : 'Record sale'}
+              </Button>
+            </form>
+          </Modal>
+
+          <Modal
+            description="Record an operating expense for the selected business."
+            isOpen={activeModal === 'expense'}
+            onClose={() => setActiveModal(null)}
+            title="Business expense"
+          >
+            <form className="stack-form" onSubmit={handleCreateExpense}>
+              <label className="field-group">
+                Account
+                <select className="field-input" onChange={(event) => setExpenseAccountId(event.target.value)} value={expenseAccountId}>
+                  {accounts.map((account) => (
+                    <option key={account.id} value={account.id}>
+                      {account.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="field-group">
+                Category
+                <select className="field-input" onChange={(event) => setExpenseCategoryId(event.target.value)} value={expenseCategoryId}>
+                  {businessExpenseCategories.map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="field-group">
+                Amount
+                <Input min="0.01" onChange={(event) => setExpenseAmount(event.target.value)} required step="0.01" type="number" value={expenseAmount} />
+              </label>
+              <label className="field-group">
+                Expense date
+                <Input onChange={(event) => setExpenseDate(event.target.value)} required type="date" value={expenseDate} />
+              </label>
+              <label className="field-group">
+                Notes
+                <Input onChange={(event) => setExpenseNotes(event.target.value)} value={expenseNotes} />
+              </label>
+              <Button disabled={isSubmitting || !selectedBusinessId} type="submit">
+                <Store aria-hidden="true" size={18} />
+                {isSubmitting ? 'Saving...' : 'Record expense'}
+              </Button>
+            </form>
+          </Modal>
         </>
       )}
     </div>

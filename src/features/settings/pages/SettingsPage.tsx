@@ -1,18 +1,40 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
-import { NavLink } from 'react-router-dom'
-import { BadgeDollarSign, CircleUserRound, KeyRound, MonitorCog, Settings2, Users } from 'lucide-react'
+import { NavLink, useNavigate } from 'react-router-dom'
+import {
+  AlertTriangle,
+  BadgeDollarSign,
+  CheckCircle2,
+  CircleUserRound,
+  KeyRound,
+  MonitorCog,
+  RefreshCw,
+  Settings2,
+  Users,
+  WifiOff,
+} from 'lucide-react'
 import { PageHeader } from '../../../components/common/PageHeader'
+import { PasswordInput } from '../../../components/common/PasswordInput'
 import { ThemeToggle } from '../../../components/common/ThemeToggle'
 import { Button, Card, CardContent, CardHeader, Input } from '../../../components/ui'
 import { currencyOptions } from '../../../constants/options'
 import { useAuthSession } from '../../../hooks/useAuthSession'
+import { useSyncStatus } from '../../../hooks/useSyncStatus'
 import { useThemePreference } from '../../../hooks/useThemePreference'
 import { routes } from '../../../app/routes'
-import { getCurrentProfile, updateCurrentPassword, updateCurrentProfile } from '../../auth/services/authService'
+import { getCurrentProfile, signOut, updateCurrentPassword, updateCurrentProfile } from '../../auth/services/authService'
 import type { CurrencyCode, Profile } from '../../../types/domain'
 
+const syncStatusLabels = {
+  needs_attention: 'Needs attention',
+  offline: 'Offline',
+  synced: 'Synced',
+  syncing: 'Syncing',
+}
+
 export function SettingsPage() {
+  const navigate = useNavigate()
   const { session } = useAuthSession()
+  const syncStatus = useSyncStatus()
   const { theme, toggleTheme } = useThemePreference()
   const [profile, setProfile] = useState<Profile | null>(null)
   const [fullName, setFullName] = useState('')
@@ -104,15 +126,61 @@ export function SettingsPage() {
     }
   }
 
+  const handleSignOut = async () => {
+    const { error } = await signOut()
+
+    if (!error) {
+      navigate(routes.login)
+    }
+  }
+
+  const SyncStatusIcon =
+    syncStatus.status === 'offline'
+      ? WifiOff
+      : syncStatus.status === 'needs_attention'
+        ? AlertTriangle
+        : syncStatus.status === 'syncing'
+          ? RefreshCw
+          : CheckCircle2
+  const syncDetail =
+    syncStatus.status === 'synced'
+      ? 'All offline changes are saved.'
+      : `${syncStatus.pendingCount} pending / ${syncStatus.conflictCount} conflicts`
+
   return (
     <div className="page-stack">
       <PageHeader
         eyebrow="Settings"
         heading="Profile and app settings"
-        lead="Update your personal profile, preferred currency, and account security from one place."
+        lead="Update your profile, preferred currency, and account security from one place."
       />
 
+      <section className="settings-summary-grid">
+        <div className="section-surface section-surface-muted">
+          <p className="eyebrow">Account</p>
+          <strong>{session?.user.email ?? 'No email found'}</strong>
+          <p className="section-description">Signed-in profile for this device.</p>
+        </div>
+        <div className="section-surface section-surface-muted">
+          <p className="eyebrow">Default currency</p>
+          <strong>{defaultCurrency}</strong>
+          <p className="section-description">Used when new spaces or records need a starting currency.</p>
+        </div>
+        <div className="section-surface section-surface-muted">
+          <p className="eyebrow">Theme</p>
+          <strong>{theme}</strong>
+          <p className="section-description">Applies across the app on this device.</p>
+        </div>
+      </section>
+
       <section className="settings-link-grid">
+        <NavLink className={`settings-link-card sync-settings-card sync-status-panel-${syncStatus.status}`} to={routes.syncCenter}>
+          <SyncStatusIcon aria-hidden="true" size={20} />
+          <span>
+            <strong>{syncStatusLabels[syncStatus.status]}</strong>
+            <small>{syncDetail}</small>
+          </span>
+        </NavLink>
         <NavLink className="settings-link-card" to={routes.currencySettings}>
           <BadgeDollarSign aria-hidden="true" size={20} />
           <span>
@@ -187,22 +255,20 @@ export function SettingsPage() {
             <form className="stack-form" onSubmit={handleUpdatePassword}>
               <label className="field-group">
                 New password
-                <Input
+                <PasswordInput
                   minLength={6}
                   onChange={(event) => setPassword(event.target.value)}
                   required
-                  type="password"
                   value={password}
                 />
               </label>
 
               <label className="field-group">
                 Confirm password
-                <Input
+                <PasswordInput
                   minLength={6}
                   onChange={(event) => setConfirmPassword(event.target.value)}
                   required
-                  type="password"
                   value={confirmPassword}
                 />
               </label>
@@ -243,7 +309,7 @@ export function SettingsPage() {
       <Card>
         <CardHeader>
           <Settings2 aria-hidden="true" size={20} />
-          <h2>Account details</h2>
+          <h2>Account and session</h2>
         </CardHeader>
         <CardContent>
           <div className="record-list">
@@ -267,6 +333,15 @@ export function SettingsPage() {
                 <small>Most recent profile settings change</small>
               </span>
               <span>{profile ? new Date(profile.updated_at).toLocaleString() : 'Loading...'}</span>
+            </div>
+            <div className="record-row">
+              <span>
+                <strong>Sign out</strong>
+                <small>Leave this device and return to the login screen</small>
+              </span>
+              <Button onClick={() => void handleSignOut()} type="button" variant="secondary">
+                Sign out
+              </Button>
             </div>
           </div>
         </CardContent>

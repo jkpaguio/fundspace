@@ -4,6 +4,7 @@ import { EmptyState } from '../../../components/common/EmptyState'
 import { PageHeader } from '../../../components/common/PageHeader'
 import { Card, CardContent, CardHeader } from '../../../components/ui'
 import { formatCurrency } from '../../../lib/formatCurrency'
+import { getMemberDisplayName } from '../../../lib/memberDisplay'
 import { useWorkspaceOutlet } from '../../../hooks/useWorkspaceOutlet'
 import { listMonthlyTransactions } from '../../transactions/services/transactionService'
 import { listWorkspaceProfiles } from '../../workspaces/services/workspaceService'
@@ -87,14 +88,14 @@ export function ActivityPage() {
             ) : (
               <div className="record-list">
                 {activityLogs.map((log) => {
-                  const actor = profiles.find((profile) => profile.id === log.user_id)
+                  const actorName = getMemberDisplayName(profiles, log.user_id)
 
                   return (
                     <div className="record-row record-row-stack" key={log.id}>
                       <span>
                         <strong>{log.description}</strong>
                         <small>
-                          {actor?.full_name || log.user_id} / {log.entity_type.replace('_', ' ')}
+                          {actorName} / {log.entity_type.replace('_', ' ')}
                         </small>
                       </span>
                       <span className="record-row-meta">

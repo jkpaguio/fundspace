@@ -5,6 +5,7 @@ type AuthFormShellProps = {
   description: string
   eyebrow: string
   footer: ReactNode
+  supportPoints?: string[]
   title: string
 }
 
@@ -13,6 +14,7 @@ export function AuthFormShell({
   description,
   eyebrow,
   footer,
+  supportPoints = [],
   title,
 }: AuthFormShellProps) {
   return (
@@ -20,8 +22,18 @@ export function AuthFormShell({
       <div className="auth-form-heading">
         <p className="eyebrow">{eyebrow}</p>
         <h2>{title}</h2>
-        <p>{description}</p>
+        <p className="section-description">{description}</p>
       </div>
+
+      {supportPoints.length > 0 && (
+        <div className="auth-support-list">
+          {supportPoints.map((point) => (
+            <span className="badge" key={point}>
+              {point}
+            </span>
+          ))}
+        </div>
+      )}
 
       {children}
 

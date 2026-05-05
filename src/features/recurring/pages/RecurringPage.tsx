@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
 import { CalendarClock, Pencil, Plus, Save, X } from 'lucide-react'
-import { Button, Card, CardContent, CardHeader, Input } from '../../../components/ui'
+import { SyncBadge } from '../../../components/common/SyncBadge'
+import { Button, Input, Modal } from '../../../components/ui'
 import {
   recurringFrequencyOptions,
   recurringTransactionTypeOptions,
@@ -55,6 +56,7 @@ export function RecurringPage() {
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [editingTemplate, setEditingTemplate] = useState<RecurringEditDraft | null>(null)
   const [savingTemplateId, setSavingTemplateId] = useState('')
 
@@ -143,6 +145,7 @@ export function RecurringPage() {
 
       setAmount('')
       setEndDate('')
+      setIsCreateModalOpen(false)
       await loadPageData()
     } catch (createError) {
       setError(
@@ -213,147 +216,17 @@ export function RecurringPage() {
       {!selectedWorkspace ? (
         <p className="empty-state">Create a space before adding recurring templates.</p>
       ) : (
-        <section className="content-grid">
-          <Card>
-            <CardHeader>
-              <Plus aria-hidden="true" size={20} />
-              <h2>Add template</h2>
-            </CardHeader>
-            <CardContent>
-              <form className="stack-form" onSubmit={handleCreateRecurring}>
-                <label className="field-group">
-                  Type
-                  <select
-                    className="field-input"
-                    onChange={(event) => setType(event.target.value as RecurringTransactionType)}
-                    value={type}
-                  >
-                    {recurringTransactionTypeOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <label className="field-group">
-                  Account
-                  <select
-                    className="field-input"
-                    onChange={(event) => setAccountId(event.target.value)}
-                    required
-                    value={accountId}
-                  >
-                    {accounts.map((account) => (
-                      <option key={account.id} value={account.id}>
-                        {account.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                {type === 'transfer' ? (
-                  <label className="field-group">
-                    Destination account
-                    <select
-                      className="field-input"
-                      onChange={(event) => setCounterpartyAccountId(event.target.value)}
-                      required
-                      value={counterpartyAccountId}
-                    >
-                      {accounts.map((account) => (
-                        <option key={account.id} value={account.id}>
-                          {account.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                ) : (
-                  <label className="field-group">
-                    Category
-                    <select
-                      className="field-input"
-                      onChange={(event) => setCategoryId(event.target.value)}
-                      value={categoryId}
-                    >
-                      <option value="">No category</option>
-                      {filteredCategories.map((category) => (
-                        <option key={category.id} value={category.id}>
-                          {category.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                )}
-
-                <label className="field-group">
-                  Amount
-                  <Input
-                    min="0.01"
-                    onChange={(event) => setAmount(event.target.value)}
-                    required
-                    step="0.01"
-                    type="number"
-                    value={amount}
-                  />
-                </label>
-
-                <label className="field-group">
-                  Frequency
-                  <select
-                    className="field-input"
-                    onChange={(event) => setFrequency(event.target.value as RecurringFrequency)}
-                    value={frequency}
-                  >
-                    {recurringFrequencyOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <label className="field-group">
-                  Start date
-                  <Input
-                    onChange={(event) => setStartDate(event.target.value)}
-                    required
-                    type="date"
-                    value={startDate}
-                  />
-                </label>
-
-                <label className="field-group">
-                  Next run date
-                  <Input
-                    onChange={(event) => setNextRunDate(event.target.value)}
-                    required
-                    type="date"
-                    value={nextRunDate}
-                  />
-                </label>
-
-                <label className="field-group">
-                  End date
-                  <Input
-                    onChange={(event) => setEndDate(event.target.value)}
-                    type="date"
-                    value={endDate}
-                  />
-                </label>
-
-                <Button disabled={isSubmitting} type="submit">
-                  <CalendarClock aria-hidden="true" size={18} />
-                  {isSubmitting ? 'Saving...' : 'Save template'}
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
-
+        <>
           <section className="list-panel">
             <div className="section-heading">
               <h2>Recurring templates</h2>
-              <span>{isLoading ? 'Loading' : `${templates.length} saved`}</span>
+              <span className="inline-actions">
+                <span>{isLoading ? 'Loading' : `${templates.length} saved`}</span>
+                <Button onClick={() => setIsCreateModalOpen(true)} type="button">
+                  <Plus aria-hidden="true" size={18} />
+                  Add template
+                </Button>
+              </span>
             </div>
 
             {templates.length === 0 && !isLoading ? (
@@ -502,6 +375,7 @@ export function RecurringPage() {
                       <span>
                         <strong>{template.type.replace('_', ' ')}</strong>
                         <small>{template.frequency} / next run {template.next_run_date}</small>
+                        <SyncBadge status={(template as { sync_status?: string }).sync_status} />
                       </span>
                     )}
                     <span className="record-row-meta">
@@ -553,7 +427,142 @@ export function RecurringPage() {
               </div>
             )}
           </section>
-        </section>
+
+          <Modal
+            description="Create a repeating income, expense, or transfer template."
+            isOpen={isCreateModalOpen}
+            onClose={() => setIsCreateModalOpen(false)}
+            title="Add template"
+          >
+            <form className="stack-form" onSubmit={handleCreateRecurring}>
+              <label className="field-group">
+                Type
+                <select
+                  className="field-input"
+                  onChange={(event) => setType(event.target.value as RecurringTransactionType)}
+                  value={type}
+                >
+                  {recurringTransactionTypeOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="field-group">
+                Account
+                <select
+                  className="field-input"
+                  onChange={(event) => setAccountId(event.target.value)}
+                  required
+                  value={accountId}
+                >
+                  {accounts.map((account) => (
+                    <option key={account.id} value={account.id}>
+                      {account.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              {type === 'transfer' ? (
+                <label className="field-group">
+                  Destination account
+                  <select
+                    className="field-input"
+                    onChange={(event) => setCounterpartyAccountId(event.target.value)}
+                    required
+                    value={counterpartyAccountId}
+                  >
+                    {accounts.map((account) => (
+                      <option key={account.id} value={account.id}>
+                        {account.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ) : (
+                <label className="field-group">
+                  Category
+                  <select
+                    className="field-input"
+                    onChange={(event) => setCategoryId(event.target.value)}
+                    value={categoryId}
+                  >
+                    <option value="">No category</option>
+                    {filteredCategories.map((category) => (
+                      <option key={category.id} value={category.id}>
+                        {category.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+
+              <label className="field-group">
+                Amount
+                <Input
+                  min="0.01"
+                  onChange={(event) => setAmount(event.target.value)}
+                  required
+                  step="0.01"
+                  type="number"
+                  value={amount}
+                />
+              </label>
+
+              <label className="field-group">
+                Frequency
+                <select
+                  className="field-input"
+                  onChange={(event) => setFrequency(event.target.value as RecurringFrequency)}
+                  value={frequency}
+                >
+                  {recurringFrequencyOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="field-group">
+                Start date
+                <Input
+                  onChange={(event) => setStartDate(event.target.value)}
+                  required
+                  type="date"
+                  value={startDate}
+                />
+              </label>
+
+              <label className="field-group">
+                Next run date
+                <Input
+                  onChange={(event) => setNextRunDate(event.target.value)}
+                  required
+                  type="date"
+                  value={nextRunDate}
+                />
+              </label>
+
+              <label className="field-group">
+                End date
+                <Input
+                  onChange={(event) => setEndDate(event.target.value)}
+                  type="date"
+                  value={endDate}
+                />
+              </label>
+
+              <Button disabled={isSubmitting} type="submit">
+                <CalendarClock aria-hidden="true" size={18} />
+                {isSubmitting ? 'Saving...' : 'Save template'}
+              </Button>
+            </form>
+          </Modal>
+        </>
       )}
     </div>
   )

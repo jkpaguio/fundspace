@@ -17,7 +17,7 @@ export async function loadAdvancedReportData(
   year: number,
 ) {
   const startDate = `${year}-${String(month).padStart(2, '0')}-01`
-  const endDate = new Date(year, month, 0).toISOString().slice(0, 10)
+  const endDate = `${year}-${String(month).padStart(2, '0')}-${String(new Date(year, month, 0).getDate()).padStart(2, '0')}`
 
   const [accounts, categories, savingsBuckets, debts, businesses, budgets, transactions] =
     await Promise.all([
@@ -43,7 +43,14 @@ export async function loadAdvancedReportData(
         listBusinessExpenses(business.id),
       ])
 
-      return { business, expenses, products, sales }
+      return {
+        business,
+        expenses: expenses.filter(
+          (expense) => expense.expense_date >= startDate && expense.expense_date <= endDate,
+        ),
+        products,
+        sales: sales.filter((sale) => sale.sale_date >= startDate && sale.sale_date <= endDate),
+      }
     }),
   )
 

@@ -1,6 +1,8 @@
 import { supabase } from '../../../lib/supabase'
+import { cacheServerRecords, getIsOnline, readCachedRecords, requireOnline } from '../../../lib/offline'
 import type {
   CurrencyCode,
+  MemberSearchResult,
   Workspace,
   WorkspaceMember,
   WorkspaceProfile,
@@ -14,28 +16,62 @@ export type WorkspaceWithMembership = Workspace & {
   membership: Pick<WorkspaceMember, 'role' | 'status'> | null
 }
 
-export async function listWorkspaces() {
-  const { data, error } = await supabase
-    .from('workspaces')
-    .select(
-      'id, name, type, owner_id, currency, created_at, updated_at, workspace_members(role, status)',
-    )
-    .order('created_at', { ascending: true })
+export type WorkspaceMemberWithProfile = WorkspaceMember & {
+  email: string | null
+  full_name: string | null
+}
 
-  if (error) {
-    throw error
+export async function listWorkspaces() {
+  const cachedWorkspaces = await readCachedRecords<Workspace>('workspaces', undefined, (first, second) =>
+    first.created_at.localeCompare(second.created_at),
+  )
+
+  if (!getIsOnline()) {
+    return cachedWorkspaces.map((workspace) => ({
+      ...workspace,
+      membership: null,
+    })) as WorkspaceWithMembership[]
   }
 
-  return (data ?? []).map((workspace) => ({
-    id: workspace.id,
-    name: workspace.name,
-    type: workspace.type,
-    owner_id: workspace.owner_id,
-    currency: workspace.currency,
-    created_at: workspace.created_at,
-    updated_at: workspace.updated_at,
-    membership: workspace.workspace_members?.[0] ?? null,
-  })) as WorkspaceWithMembership[]
+  try {
+    const { data, error } = await supabase
+      .from('workspaces')
+      .select(
+        'id, name, type, owner_id, currency, created_at, updated_at, workspace_members(role, status)',
+      )
+      .order('created_at', { ascending: true })
+
+    if (error) {
+      throw error
+    }
+
+    const workspaces = (data ?? []).map((workspace) => ({
+      id: workspace.id,
+      name: workspace.name,
+      type: workspace.type,
+      owner_id: workspace.owner_id,
+      currency: workspace.currency,
+      created_at: workspace.created_at,
+      updated_at: workspace.updated_at,
+      membership: workspace.workspace_members?.[0] ?? null,
+    })) as WorkspaceWithMembership[]
+
+    await cacheServerRecords(
+      'workspaces',
+      workspaces.map(({ membership: _membership, ...workspace }) => workspace),
+    )
+
+    return workspaces
+  } catch (error) {
+    if (cachedWorkspaces.length > 0) {
+      return cachedWorkspaces.map((workspace) => ({
+        ...workspace,
+        membership: null,
+      })) as WorkspaceWithMembership[]
+    }
+
+    throw error
+  }
 }
 
 export async function createWorkspace(input: {
@@ -57,28 +93,86 @@ export async function createWorkspace(input: {
 }
 
 export async function listWorkspaceMembers(workspaceId: string) {
-  const { data, error } = await supabase
-    .from('workspace_members')
-    .select('id, workspace_id, user_id, role, status, invited_by, created_at, updated_at')
-    .eq('workspace_id', workspaceId)
-    .order('created_at', { ascending: true })
+  const cachedMembers = await readCachedRecords<WorkspaceMemberWithProfile>(
+    'workspace_members',
+    (member) => member.workspace_id === workspaceId,
+    (first, second) => first.created_at.localeCompare(second.created_at),
+  )
 
-  if (error) {
-    throw error
+  if (!getIsOnline()) {
+    return cachedMembers
   }
 
-  return (data ?? []) as WorkspaceMember[]
+  const { data, error } = await supabase.rpc('list_workspace_member_directory', {
+    target_workspace_id: workspaceId,
+  })
+
+  if (error) {
+    const { data: fallbackData, error: fallbackError } = await supabase
+      .from('workspace_members')
+      .select('id, workspace_id, user_id, role, status, invited_by, created_at, updated_at')
+      .eq('workspace_id', workspaceId)
+      .order('created_at', { ascending: true })
+
+    if (fallbackError) {
+      throw fallbackError
+    }
+
+    const members = (fallbackData ?? []).map((member) => ({
+      email: null,
+      ...member,
+      full_name: null,
+    })) as WorkspaceMemberWithProfile[]
+
+    await cacheServerRecords('workspace_members', members)
+
+    return members
+  }
+
+  const members = (data ?? []) as WorkspaceMemberWithProfile[]
+
+  await cacheServerRecords('workspace_members', members)
+
+  return members
 }
 
 export async function listWorkspaceProfiles(workspaceId: string) {
+  try {
+    const members = await listWorkspaceMembers(workspaceId)
+
+    return members
+      .filter((member) => member.status === 'active')
+      .map((member) => ({
+        email: member.email,
+        full_name: member.full_name,
+        id: member.user_id,
+      })) satisfies WorkspaceProfile[]
+  } catch {
+    // Fall back to the older direct join below when the member directory RPC is unavailable.
+  }
+
   const { data, error } = await supabase
     .from('workspace_members')
-    .select('user_id, profiles(id, full_name)')
+    .select('user_id, profiles(id, full_name, email)')
     .eq('workspace_id', workspaceId)
     .eq('status', 'active')
 
   if (error) {
-    throw error
+    const { data: fallbackData, error: fallbackError } = await supabase
+      .from('workspace_members')
+      .select('user_id')
+      .eq('workspace_id', workspaceId)
+      .eq('status', 'active')
+
+    if (fallbackError) {
+      throw fallbackError
+    }
+
+    return (fallbackData ?? []).map((entry) => ({
+      email: null,
+      full_name: null,
+      id: entry.user_id,
+    }))
   }
 
   return (data ?? [])
@@ -90,6 +184,7 @@ export async function listWorkspaceProfiles(workspaceId: string) {
       }
 
       return {
+        email: profile.email ?? null,
         full_name: profile.full_name,
         id: profile.id,
       }
@@ -102,6 +197,8 @@ export async function addWorkspaceMember(input: {
   userId: string
   role: WorkspaceRole
 }) {
+  requireOnline('Inviting members')
+
   const { error } = await supabase.from('workspace_members').insert({
     workspace_id: input.workspaceId,
     user_id: input.userId,
@@ -114,7 +211,33 @@ export async function addWorkspaceMember(input: {
   }
 }
 
+export async function searchWorkspaceInvitableProfiles(input: {
+  query: string
+  workspaceId: string
+}) {
+  requireOnline('Member search')
+
+  const { data, error } = await supabase.rpc('search_workspace_invitable_profiles', {
+    search_query: input.query,
+    target_workspace_id: input.workspaceId,
+  })
+
+  if (error) {
+    if (error.code === 'PGRST202') {
+      throw new Error(
+        'Member search is not available yet because the workspace member search migration is missing from the connected Supabase database.',
+      )
+    }
+
+    throw error
+  }
+
+  return (data ?? []) as MemberSearchResult[]
+}
+
 export async function acceptWorkspaceInvite(workspaceId: string) {
+  requireOnline('Accepting invites')
+
   const { data, error } = await supabase.rpc('accept_workspace_invite', {
     target_workspace_id: workspaceId,
   })

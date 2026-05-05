@@ -1,9 +1,13 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
+import { NavLink } from 'react-router-dom'
 import { ArrowRightLeft, Plus, ReceiptText, Save } from 'lucide-react'
 import { EmptyState } from '../../../components/common/EmptyState'
 import { PageHeader } from '../../../components/common/PageHeader'
-import { Button, Card, CardContent, CardHeader, Input } from '../../../components/ui'
+import { SyncBadge } from '../../../components/common/SyncBadge'
+import { Button, Input, Modal } from '../../../components/ui'
+import { routes } from '../../../app/routes'
 import { transactionTypeOptions } from '../../../constants/options'
+import { getMemberDisplayName } from '../../../lib/memberDisplay'
 import { listAccounts } from '../../accounts/services/accountService'
 import { listCategories } from '../../categories/services/categoryService'
 import { listWorkspaceProfiles } from '../../workspaces/services/workspaceService'
@@ -55,6 +59,7 @@ export function TransactionsPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isCorrecting, setIsCorrecting] = useState(false)
+  const [activeModal, setActiveModal] = useState<'entry' | 'transfer' | null>(null)
 
   const filteredCategories = useMemo(
     () =>
@@ -140,6 +145,7 @@ export function TransactionsPage() {
       })
       setAmount('')
       setNotes('')
+      setActiveModal(null)
       await loadPageData()
     } catch (createError) {
       setError(
@@ -171,6 +177,7 @@ export function TransactionsPage() {
       })
       setTransferAmount('')
       setTransferNotes('')
+      setActiveModal(null)
       await loadPageData()
     } catch (transferError) {
       setError(transferError instanceof Error ? transferError.message : 'Unable to transfer.')
@@ -228,7 +235,7 @@ export function TransactionsPage() {
       <PageHeader
         eyebrow="Ledger"
         heading="Transactions"
-        lead="Record income, expenses, and account transfers with auditable ledger rows."
+        lead="Review the full ledger, filter history, and use manual or corrective entries when Quick Add is not enough."
       />
 
       {error && <p className="form-error">{error}</p>}
@@ -245,177 +252,30 @@ export function TransactionsPage() {
         />
       ) : (
         <>
-          <section className="content-grid">
-            <Card>
-              <CardHeader>
-                <Plus aria-hidden="true" size={20} />
-                <h2>Income or expense</h2>
-              </CardHeader>
-              <CardContent>
-                <form className="stack-form" onSubmit={handleCreateMoneyTransaction}>
-                  <label className="field-group">
-                    Type
-                    <select
-                      className="field-input"
-                      onChange={(event) => setTransactionType(event.target.value as 'income' | 'expense')}
-                      value={transactionType}
-                    >
-                      {transactionTypeOptions.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-
-                  <label className="field-group">
-                    Account
-                    <select
-                      className="field-input"
-                      onChange={(event) => setAccountId(event.target.value)}
-                      required
-                      value={accountId}
-                    >
-                      {accounts.map((account) => (
-                        <option key={account.id} value={account.id}>
-                          {account.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-
-                  <label className="field-group">
-                    Category
-                    <select
-                      className="field-input"
-                      onChange={(event) => setCategoryId(event.target.value)}
-                      value={categoryId}
-                    >
-                      <option value="">No category</option>
-                      {filteredCategories.map((category) => (
-                        <option key={category.id} value={category.id}>
-                          {category.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-
-                  <label className="field-group">
-                    Amount
-                    <Input
-                      min="0.01"
-                      onChange={(event) => setAmount(event.target.value)}
-                      required
-                      step="0.01"
-                      type="number"
-                      value={amount}
-                    />
-                  </label>
-
-                  <label className="field-group">
-                    Date
-                    <Input
-                      onChange={(event) => setTransactionDate(event.target.value)}
-                      required
-                      type="date"
-                      value={transactionDate}
-                    />
-                  </label>
-
-                  <label className="field-group">
-                    Notes
-                    <Input
-                      onChange={(event) => setNotes(event.target.value)}
-                      placeholder="Salary, groceries, bill payment"
-                      value={notes}
-                    />
-                  </label>
-
-                  <Button disabled={isSubmitting} type="submit">
-                    <ReceiptText aria-hidden="true" size={18} />
-                    {isSubmitting ? 'Saving...' : 'Save transaction'}
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <ArrowRightLeft aria-hidden="true" size={20} />
-                <h2>Transfer</h2>
-              </CardHeader>
-              <CardContent>
-                <form className="stack-form" onSubmit={handleCreateTransfer}>
-                  <label className="field-group">
-                    From
-                    <select
-                      className="field-input"
-                      onChange={(event) => setSourceAccountId(event.target.value)}
-                      required
-                      value={sourceAccountId}
-                    >
-                      {accounts.map((account) => (
-                        <option key={account.id} value={account.id}>
-                          {account.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-
-                  <label className="field-group">
-                    To
-                    <select
-                      className="field-input"
-                      onChange={(event) => setDestinationAccountId(event.target.value)}
-                      required
-                      value={destinationAccountId}
-                    >
-                      {accounts.map((account) => (
-                        <option key={account.id} value={account.id}>
-                          {account.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-
-                  <label className="field-group">
-                    Amount
-                    <Input
-                      min="0.01"
-                      onChange={(event) => setTransferAmount(event.target.value)}
-                      required
-                      step="0.01"
-                      type="number"
-                      value={transferAmount}
-                    />
-                  </label>
-
-                  <label className="field-group">
-                    Date
-                    <Input
-                      onChange={(event) => setTransferDate(event.target.value)}
-                      required
-                      type="date"
-                      value={transferDate}
-                    />
-                  </label>
-
-                  <label className="field-group">
-                    Notes
-                    <Input
-                      onChange={(event) => setTransferNotes(event.target.value)}
-                      placeholder="Move to savings"
-                      value={transferNotes}
-                    />
-                  </label>
-
-                  <Button disabled={isSubmitting || accounts.length < 2} type="submit">
-                    <ArrowRightLeft aria-hidden="true" size={18} />
-                    {isSubmitting ? 'Moving...' : 'Transfer money'}
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
+          <section className="success-banner">
+            <div>
+              <p className="eyebrow">Daily workflow</p>
+              <strong>Quick Add is the fastest way to record everyday money movement.</strong>
+              <p>
+                Use this screen for deeper history, filtering, manual ledger entry, and corrective follow-up when you need more control.
+              </p>
+            </div>
+            <div className="empty-state-actions">
+              <Button asChild type="button">
+                <NavLink to={routes.add}>Open Quick Add</NavLink>
+              </Button>
+              <Button onClick={() => setActiveModal('entry')} type="button" variant="secondary">
+                <Plus aria-hidden="true" size={18} />
+                Manual entry
+              </Button>
+              <Button onClick={() => setActiveModal('transfer')} type="button" variant="secondary">
+                <ArrowRightLeft aria-hidden="true" size={18} />
+                Transfer
+              </Button>
+              <Button asChild type="button" variant="secondary">
+                <NavLink to={routes.calendar}>Open Calendar</NavLink>
+              </Button>
+            </div>
           </section>
 
           <section className="list-panel">
@@ -467,7 +327,7 @@ export function TransactionsPage() {
                 {transactions.map((transaction) => {
                   const account = accounts.find((item) => item.id === transaction.account_id)
                   const category = categories.find((item) => item.id === transaction.category_id)
-                  const creator = profiles.find((profile) => profile.id === transaction.created_by)
+                  const creatorName = getMemberDisplayName(profiles, transaction.created_by)
 
                   return (
                     <button
@@ -480,8 +340,9 @@ export function TransactionsPage() {
                         <strong>{transaction.notes || transaction.type.replace('_', ' ')}</strong>
                         <small>
                           {transaction.transaction_date} / {account?.name ?? 'Account'} /{' '}
-                          {category?.name ?? 'No category'} / by {creator?.full_name || transaction.created_by}
+                          {category?.name ?? 'No category'} / by {creatorName}
                         </small>
+                        <SyncBadge status={(transaction as { sync_status?: string }).sync_status} />
                       </span>
                       <span className={transaction.direction === 'in' ? 'amount-in' : 'amount-out'}>
                         {transaction.direction === 'in' ? '+' : '-'}
@@ -493,6 +354,175 @@ export function TransactionsPage() {
               </div>
             )}
           </section>
+
+          <Modal
+            description="Use the fuller ledger form when Quick Add is not enough."
+            isOpen={activeModal === 'entry'}
+            onClose={() => setActiveModal(null)}
+            title="Manual ledger entry"
+          >
+            <form className="stack-form" onSubmit={handleCreateMoneyTransaction}>
+              <label className="field-group">
+                Type
+                <select
+                  className="field-input"
+                  onChange={(event) => setTransactionType(event.target.value as 'income' | 'expense')}
+                  value={transactionType}
+                >
+                  {transactionTypeOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="field-group">
+                Account
+                <select
+                  className="field-input"
+                  onChange={(event) => setAccountId(event.target.value)}
+                  required
+                  value={accountId}
+                >
+                  {accounts.map((account) => (
+                    <option key={account.id} value={account.id}>
+                      {account.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="field-group">
+                Category
+                <select
+                  className="field-input"
+                  onChange={(event) => setCategoryId(event.target.value)}
+                  value={categoryId}
+                >
+                  <option value="">No category</option>
+                  {filteredCategories.map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="field-group">
+                Amount
+                <Input
+                  min="0.01"
+                  onChange={(event) => setAmount(event.target.value)}
+                  required
+                  step="0.01"
+                  type="number"
+                  value={amount}
+                />
+              </label>
+
+              <label className="field-group">
+                Date
+                <Input
+                  onChange={(event) => setTransactionDate(event.target.value)}
+                  required
+                  type="date"
+                  value={transactionDate}
+                />
+              </label>
+
+              <label className="field-group">
+                Notes
+                <Input
+                  onChange={(event) => setNotes(event.target.value)}
+                  placeholder="Salary, groceries, bill payment"
+                  value={notes}
+                />
+              </label>
+
+              <Button disabled={isSubmitting} type="submit">
+                <ReceiptText aria-hidden="true" size={18} />
+                {isSubmitting ? 'Saving...' : 'Save transaction'}
+              </Button>
+            </form>
+          </Modal>
+
+          <Modal
+            description="Record an account-to-account move from the ledger screen."
+            isOpen={activeModal === 'transfer'}
+            onClose={() => setActiveModal(null)}
+            title="Manual transfer entry"
+          >
+            <form className="stack-form" onSubmit={handleCreateTransfer}>
+              <label className="field-group">
+                From
+                <select
+                  className="field-input"
+                  onChange={(event) => setSourceAccountId(event.target.value)}
+                  required
+                  value={sourceAccountId}
+                >
+                  {accounts.map((account) => (
+                    <option key={account.id} value={account.id}>
+                      {account.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="field-group">
+                To
+                <select
+                  className="field-input"
+                  onChange={(event) => setDestinationAccountId(event.target.value)}
+                  required
+                  value={destinationAccountId}
+                >
+                  {accounts.map((account) => (
+                    <option key={account.id} value={account.id}>
+                      {account.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="field-group">
+                Amount
+                <Input
+                  min="0.01"
+                  onChange={(event) => setTransferAmount(event.target.value)}
+                  required
+                  step="0.01"
+                  type="number"
+                  value={transferAmount}
+                />
+              </label>
+
+              <label className="field-group">
+                Date
+                <Input
+                  onChange={(event) => setTransferDate(event.target.value)}
+                  required
+                  type="date"
+                  value={transferDate}
+                />
+              </label>
+
+              <label className="field-group">
+                Notes
+                <Input
+                  onChange={(event) => setTransferNotes(event.target.value)}
+                  placeholder="Move to savings"
+                  value={transferNotes}
+                />
+              </label>
+
+              <Button disabled={isSubmitting || accounts.length < 2} type="submit">
+                <ArrowRightLeft aria-hidden="true" size={18} />
+                {isSubmitting ? 'Moving...' : 'Transfer money'}
+              </Button>
+            </form>
+          </Modal>
 
           {selectedTransaction && (
             <section className="detail-panel">
@@ -524,8 +554,7 @@ export function TransactionsPage() {
                 <div>
                   <dt>Created by</dt>
                   <dd>
-                    {profiles.find((profile) => profile.id === selectedTransaction.created_by)?.full_name
-                      || selectedTransaction.created_by}
+                    {getMemberDisplayName(profiles, selectedTransaction.created_by)}
                   </dd>
                 </div>
                 <div>
@@ -534,7 +563,10 @@ export function TransactionsPage() {
                 </div>
               </dl>
               <form className="stack-form correction-form" onSubmit={handleCreateCorrection}>
-                <p className="eyebrow">Correction entry</p>
+                <p className="eyebrow">Advanced correction</p>
+                <p className="section-description">
+                  Use this only when a saved ledger row needs a correcting follow-up instead of a new daily entry.
+                </p>
                 <label className="field-group">
                   Direction
                   <select

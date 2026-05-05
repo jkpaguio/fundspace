@@ -1,57 +1,82 @@
-import { NavLink } from 'react-router-dom'
+import { NavLink, useNavigate } from 'react-router-dom'
+import { LogOut } from 'lucide-react'
 import { PageHeader } from '../../../components/common/PageHeader'
-import { navItems, nonBusinessOnlyRoutes } from '../../../app/navigation'
+import { Button } from '../../../components/ui'
+import { getMoreNavigationSections } from '../../../app/navigation'
 import { routes } from '../../../app/routes'
 import { useWorkspaceOutlet } from '../../../hooks/useWorkspaceOutlet'
-
-const primaryRoutes = new Set<string>([
-  routes.workspace,
-  routes.dashboard,
-  routes.accounts,
-  routes.transactions,
-  routes.business,
-  routes.more,
-])
+import { signOut } from '../../auth/services/authService'
 
 export function MorePage() {
+  const navigate = useNavigate()
   const { selectedWorkspace } = useWorkspaceOutlet()
   const isBusinessWorkspace =
     selectedWorkspace?.type === 'business' || selectedWorkspace?.type === 'side_hustle'
+  const sections = getMoreNavigationSections(isBusinessWorkspace)
 
-  const availableItems = navItems.filter((item) => {
-    if (item.to === routes.business) {
-      return isBusinessWorkspace
+  const handleSignOut = async () => {
+    const { error } = await signOut()
+
+    if (!error) {
+      navigate(routes.login)
     }
-
-    if (isBusinessWorkspace && nonBusinessOnlyRoutes.has(item.to)) {
-      return false
-    }
-
-    return !primaryRoutes.has(item.to)
-  })
+  }
 
   return (
     <div className="page-stack">
       <PageHeader
-        eyebrow="Navigation"
+        eyebrow="Tools and setup"
         heading="More"
-        lead="Find the tools you do not need every day without crowding the main navigation."
+        lead="Open planning, setup, and deeper tools from one compact hub."
       />
 
-      <section className="more-grid">
-        {availableItems.map((item) => {
-          const Icon = item.icon
+      <section className="section-surface section-surface-hero more-overview-strip">
+        <div className="section-heading section-heading-stack">
+          <div>
+            <p className="eyebrow">Tool hub</p>
+            <h2>{selectedWorkspace ? selectedWorkspace.name : 'Your account'}</h2>
+            <p className="section-description">Daily actions stay in Home, Add, and Transactions.</p>
+          </div>
+        </div>
+      </section>
 
-          return (
-            <NavLink className="more-nav-card" key={item.to} to={item.to}>
-              <Icon aria-hidden="true" size={20} />
-              <div>
-                <strong>{item.label}</strong>
-                <p>{item.description}</p>
-              </div>
-            </NavLink>
-          )
-        })}
+      {sections.map((section) => (
+        <section className={`more-section-shelf more-section-shelf-${section.id}`} key={section.id}>
+          <div className="section-heading section-heading-stack">
+            <div>
+              <h2>{section.title}</h2>
+              <p className="section-description">{section.description}</p>
+            </div>
+          </div>
+
+          <div className="more-tile-grid">
+            {section.items.map((item) => {
+              const Icon = item.icon
+
+              return (
+                <NavLink className="more-tool-tile" key={item.to} to={item.to}>
+                  <span className="more-tool-icon">
+                    <Icon aria-hidden="true" size={22} />
+                  </span>
+                  <strong className="more-tool-label">{item.label}</strong>
+                </NavLink>
+              )
+            })}
+          </div>
+        </section>
+      ))}
+
+      <section className="budget-warning budget-warning-soft">
+        <LogOut aria-hidden="true" size={20} />
+        <div>
+          <h2>Leave this session</h2>
+          <p>Sign out here if you are done and want to return to the login screen.</p>
+          <div className="empty-state-actions">
+            <Button onClick={() => void handleSignOut()} type="button" variant="secondary">
+              Sign out
+            </Button>
+          </div>
+        </div>
       </section>
     </div>
   )

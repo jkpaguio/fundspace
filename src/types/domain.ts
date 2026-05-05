@@ -76,8 +76,15 @@ export type WorkspaceMember = {
 }
 
 export type WorkspaceProfile = {
+  email: string | null
   id: string
   full_name: string | null
+}
+
+export type MemberSearchResult = {
+  email: string | null
+  full_name: string | null
+  id: string
 }
 
 export type Account = {

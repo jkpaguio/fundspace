@@ -1,4 +1,4 @@
-import { Navigate, RouterProvider, createBrowserRouter } from 'react-router-dom'
+import { RouterProvider, createBrowserRouter } from 'react-router-dom'
 import { AppLayout } from './layouts/AppLayout'
 import { AuthLayout } from './layouts/AuthLayout'
 import { routes } from './routes'
@@ -13,19 +13,24 @@ import { BusinessPage } from '../features/business/pages/BusinessPage'
 import { BudgetsPage } from '../features/budgets/pages/BudgetsPage'
 import { CategoriesPage } from '../features/categories/pages/CategoriesPage'
 import { DebtsPage } from '../features/debts/pages/DebtsPage'
+import { LandingPage } from '../features/landing/pages/LandingPage'
 import { DashboardPage } from '../features/reports/pages/DashboardPage'
 import { ReportsPage } from '../features/reports/pages/ReportsPage'
 import { RecurringPage } from '../features/recurring/pages/RecurringPage'
 import { MorePage } from '../features/settings/pages/MorePage'
 import { CurrencySettingsPage } from '../features/settings/pages/CurrencySettingsPage'
 import { SettingsPage } from '../features/settings/pages/SettingsPage'
+import { SyncCenterPage } from '../features/settings/pages/SyncCenterPage'
 import { WorkspaceSettingsPage } from '../features/settings/pages/WorkspaceSettingsPage'
 import { SavingsPage } from '../features/savings/pages/SavingsPage'
+import { AddPage } from '../features/transactions/pages/AddPage'
+import { CalendarPage } from '../features/transactions/pages/CalendarPage'
 import { TransactionsPage } from '../features/transactions/pages/TransactionsPage'
 import { CreateWorkspacePage } from '../features/workspaces/pages/CreateWorkspacePage'
 import { WorkspacesPage } from '../features/workspaces/pages/WorkspacesPage'
 
 const router = createBrowserRouter([
+  { path: routes.home, element: <LandingPage /> },
   {
     element: <AuthLayout />,
     children: [
@@ -49,8 +54,9 @@ const router = createBrowserRouter([
       {
         element: <AppLayout />,
         children: [
-          { path: routes.home, element: <Navigate replace to={routes.dashboard} /> },
           { path: routes.dashboard, element: <DashboardPage /> },
+          { path: routes.add, element: <AddPage /> },
+          { path: routes.calendar, element: <CalendarPage /> },
           { path: routes.more, element: <MorePage /> },
           { path: routes.workspace, element: <WorkspacesPage /> },
           { path: routes.createWorkspace, element: <CreateWorkspacePage /> },
@@ -65,6 +71,7 @@ const router = createBrowserRouter([
           { path: routes.business, element: <BusinessPage /> },
           { path: routes.reports, element: <ReportsPage /> },
           { path: routes.settings, element: <SettingsPage /> },
+          { path: routes.syncCenter, element: <SyncCenterPage /> },
           { path: routes.currencySettings, element: <CurrencySettingsPage /> },
           { path: routes.workspaceSettings, element: <WorkspaceSettingsPage /> },
         ],

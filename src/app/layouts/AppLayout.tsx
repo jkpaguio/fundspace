@@ -10,10 +10,9 @@ import { ThemeToggle } from '../../components/common/ThemeToggle'
 import { Button } from '../../components/ui'
 import { routeLabels, routes } from '../routes'
 import {
-  businessMobileRoutes,
-  defaultMobileRoutes,
-  navItems,
-  nonBusinessOnlyRoutes,
+  getMoreNavigationSections,
+  noSpaceNavItems,
+  primaryNavItems,
 } from '../navigation'
 import { useWorkspaceSelection } from '../../hooks/useWorkspaceSelection'
 import { useThemePreference } from '../../hooks/useThemePreference'
@@ -32,13 +31,9 @@ const routesAllowedWithoutSpace = new Set<string>([
   routes.workspace,
   routes.createWorkspace,
   routes.settings,
+  routes.syncCenter,
   routes.currencySettings,
   routes.workspaceSettings,
-])
-
-const noSpacePrimaryRoutes = new Set<string>([
-  routes.workspace,
-  routes.settings,
 ])
 
 export function AppLayout() {
@@ -52,31 +47,9 @@ export function AppLayout() {
   const isBusinessWorkspace =
     selectedWorkspace?.type === 'business' || selectedWorkspace?.type === 'side_hustle'
 
-  const desktopNavItems = navItems.filter((item) => {
-    if (!selectedWorkspace) {
-      return noSpacePrimaryRoutes.has(item.to)
-    }
-
-    if (item.to === routes.business) {
-      return isBusinessWorkspace
-    }
-
-    if (nonBusinessOnlyRoutes.has(item.to)) {
-      return !isBusinessWorkspace
-    }
-
-    return true
-  })
-
-  const mobilePrimaryNavItems = !selectedWorkspace
-    ? desktopNavItems
-    : isBusinessWorkspace
-      ? desktopNavItems.filter((item) => businessMobileRoutes.has(item.to))
-      : desktopNavItems.filter((item) => defaultMobileRoutes.has(item.to))
-
-  const secondaryNavItems = desktopNavItems.filter(
-    (item) => !mobilePrimaryNavItems.some((primaryItem) => primaryItem.to === item.to),
-  )
+  const moreSections = getMoreNavigationSections(isBusinessWorkspace)
+  const hasMoreItems = moreSections.length > 0
+  const desktopNavItems = selectedWorkspace ? primaryNavItems : noSpaceNavItems
   const currentPageLabel = routeLabels[location.pathname] ?? 'FundSpace app'
   const isSpaceChooserRoute =
     location.pathname === routes.workspace || location.pathname === routes.createWorkspace
@@ -122,6 +95,13 @@ export function AppLayout() {
               </NavLink>
             )
           })}
+
+          {selectedWorkspace && hasMoreItems && (
+            <NavLink className="nav-button" to={routes.more}>
+              <MoreHorizontal aria-hidden="true" size={18} />
+              <span>More</span>
+            </NavLink>
+          )}
         </nav>
 
         {!isSpaceChooserRoute && (
@@ -154,6 +134,33 @@ export function AppLayout() {
       </aside>
 
       <section className="app-content">
+        <header className="mobile-shell-header">
+          <div className="mobile-shell-top">
+            <div className="mobile-shell-brand">
+              <img alt="FundSpace" className="sidebar-brand-logo" src={logoSrc} />
+              <div>
+                <span className="mobile-shell-app-name">FundSpace</span>
+                <strong>{currentPageLabel}</strong>
+              </div>
+            </div>
+
+            <div className="mobile-shell-actions">
+              <ThemeToggle compact onToggle={toggleTheme} theme={theme} />
+              {location.pathname !== routes.settings && (
+                <Button
+                  aria-label="Open settings"
+                  className="mobile-shell-icon-button"
+                  onClick={() => navigate(routes.settings)}
+                  type="button"
+                  variant="ghost"
+                >
+                  <Settings2 aria-hidden="true" size={16} />
+                </Button>
+              )}
+            </div>
+          </div>
+        </header>
+
         <header className="app-topbar">
           <div>
             <div className="app-breadcrumbs" aria-label="Space context breadcrumbs">
@@ -174,12 +181,6 @@ export function AppLayout() {
 
           <div className="topbar-actions">
             <ThemeToggle onToggle={toggleTheme} theme={theme} />
-            {secondaryNavItems.length > 0 && (
-              <Button onClick={() => navigate(routes.more)} type="button" variant="ghost">
-                <MoreHorizontal aria-hidden="true" size={16} />
-                More
-              </Button>
-            )}
             <Button onClick={() => navigate(routes.settings)} type="button" variant="ghost">
               <Settings2 aria-hidden="true" size={16} />
               Settings
@@ -193,31 +194,8 @@ export function AppLayout() {
         </header>
 
         {!isSpaceChooserRoute && (
-          <label className="mobile-workspace-switcher">
-            <span>Space</span>
-            <select
-              disabled={isLoading || workspaces.length === 0}
-              onChange={(event) => {
-                if (event.target.value) {
-                  selectWorkspace(event.target.value)
-                }
-              }}
-              value={selectedWorkspace?.id ?? ''}
-            >
-              {!selectedWorkspace && workspaces.length > 0 && <option value="">Choose a space</option>}
-              {workspaces.length === 0 && <option value="">No space yet</option>}
-              {workspaces.map((workspace) => (
-                <option key={workspace.id} value={workspace.id}>
-                  {workspace.name}
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
-
-        {!isSpaceChooserRoute && (
           <nav className="mobile-primary-nav" aria-label="Primary mobile navigation">
-            {mobilePrimaryNavItems.map((item) => {
+            {desktopNavItems.map((item) => {
               const Icon = item.icon
 
               return (
@@ -228,7 +206,7 @@ export function AppLayout() {
               )
             })}
 
-            {secondaryNavItems.length > 0 && (
+            {selectedWorkspace && hasMoreItems && (
               <NavLink className="mobile-primary-link" to={routes.more}>
                 <MoreHorizontal aria-hidden="true" size={18} />
                 <span>More</span>

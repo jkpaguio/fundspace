@@ -10,15 +10,24 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "cap:sync": "cap sync",
-    "cap:open": "cap open"
+    "cap:open": "cap open",
+    "cap:add:android": "cap add android",
+    "cap:sync:android": "cap sync android",
+    "cap:open:android": "cap open android"
   },
   "dependencies": {
-    "@capacitor/core": "^8.3.1",
+    "@capacitor/android": "7.4.3",
+    "@capacitor/core": "7.4.3",
+    "@fullcalendar/core": "^6.1.20",
+    "@fullcalendar/daygrid": "^6.1.20",
+    "@fullcalendar/interaction": "^6.1.20",
+    "@fullcalendar/react": "^6.1.20",
     "@radix-ui/react-slot": "^1.2.4",
     "@supabase/supabase-js": "^2.105.0",
     "@tailwindcss/vite": "^4.2.4",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "dexie": "^4.4.2",
     "lucide-react": "^1.11.0",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
@@ -29,7 +38,7 @@
     "tailwindcss": "^4.2.4"
   },
   "devDependencies": {
-    "@capacitor/cli": "^8.3.1",
+    "@capacitor/cli": "7.4.3",
     "@eslint/js": "^10.0.1",
     "@types/node": "^24.12.2",
     "@types/react": "^19.2.14",
@@ -41,6 +50,7 @@
     "globals": "^17.5.0",
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.58.2",
-    "vite": "^8.0.10"
+    "vite": "^8.0.10",
+    "vite-plugin-pwa": "^1.2.0"
   }
 }
