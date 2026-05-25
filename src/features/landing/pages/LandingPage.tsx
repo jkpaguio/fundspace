@@ -1,4 +1,4 @@
-import { Link, Navigate } from 'react-router-dom'
+import { Navigate } from 'react-router-dom'
 import {
   ArrowRight,
   BadgeCheck,
@@ -67,6 +67,8 @@ const workflowSteps = [
   },
 ]
 
+const apkDownloadHref = '/apk/fundspace-v1.0.0.apk'
+
 export function LandingPage() {
   const { isLoading, session } = useAuthSession()
 
@@ -82,18 +84,20 @@ export function LandingPage() {
     <main className="landing-page">
       <section className="landing-hero">
         <nav className="landing-nav" aria-label="Landing navigation">
-          <Link className="landing-brand" to={routes.home}>
+          <a className="landing-brand" href={routes.home}>
             <img alt="FundSpace" src="/fundspace-icon.svg" />
             <span>FundSpace</span>
-          </Link>
+          </a>
           <span className="landing-nav-actions">
             <Button asChild type="button" variant="ghost">
-              <Link to={routes.login}>Sign in</Link>
+              <a download href={apkDownloadHref}>
+                Download APK
+              </a>
             </Button>
             <Button asChild type="button">
-              <Link to={session ? routes.dashboard : routes.register}>
-                {session ? 'Open app' : 'Get started'}
-              </Link>
+              <a download href={apkDownloadHref}>
+                Install Android app
+              </a>
             </Button>
           </span>
         </nav>
@@ -107,16 +111,16 @@ export function LandingPage() {
           </p>
           <div className="landing-action-row">
             <Button asChild type="button">
-              <Link to={session ? routes.dashboard : routes.register}>
+              <a download href={apkDownloadHref}>
                 <ArrowRight aria-hidden="true" size={18} />
-                {session ? 'Open dashboard' : 'Start tracking'}
-              </Link>
+                Download APK
+              </a>
             </Button>
             <Button asChild type="button" variant="secondary">
-              <Link to={routes.login}>
+              <a download href={apkDownloadHref}>
                 <Download aria-hidden="true" size={18} />
-                Sign in
-              </Link>
+                Install Android app
+              </a>
             </Button>
           </div>
           <dl className="landing-metrics" aria-label="FundSpace coverage">
