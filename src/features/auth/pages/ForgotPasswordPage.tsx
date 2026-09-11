@@ -32,7 +32,7 @@ export function ForgotPasswordPage() {
 
   return (
     <AuthFormShell
-      description="Enter your account email and Supabase will send recovery instructions."
+      description="Enter your account email to receive instructions for resetting your password."
       eyebrow="Account recovery"
       footer={<Link to={routes.login}>Back to login</Link>}
       title="Reset password"
@@ -42,6 +42,7 @@ export function ForgotPasswordPage() {
           Email
           <Input
             autoComplete="email"
+            placeholder="you@example.com"
             onChange={(event) => setEmail(event.target.value)}
             required
             type="email"
@@ -49,8 +50,8 @@ export function ForgotPasswordPage() {
           />
         </label>
 
-        {error && <p className="form-error">{error}</p>}
-        {message && <p className="form-success">{message}</p>}
+        {error && <p className="form-error" role="alert">{error}</p>}
+        {message && <p className="form-success" role="status">{message}</p>}
 
         <Button disabled={isSubmitting} type="submit">
           <Mail aria-hidden="true" size={18} />

@@ -33,7 +33,7 @@ export function LoginPage() {
 
   return (
     <AuthFormShell
-      description="Sign in to continue tracking your spaces, balances, and money movement."
+      description="Your money, plans, and progress are right here. Let’s pick up where you left off."
       eyebrow="Welcome back"
       footer={
         <>
@@ -43,14 +43,14 @@ export function LoginPage() {
           </span>
         </>
       }
-      supportPoints={['Pick the right space after login', 'Quick Add stays one tap away']}
-      title="Sign in"
+      title="Welcome to your space."
     >
       <form className="auth-form" onSubmit={handleSubmit}>
         <label className="field-group">
           Email
           <Input
             autoComplete="email"
+            placeholder="you@example.com"
             onChange={(event) => setEmail(event.target.value)}
             required
             type="email"
@@ -62,6 +62,7 @@ export function LoginPage() {
           Password
           <PasswordInput
             autoComplete="current-password"
+            placeholder="Enter your password"
             minLength={6}
             onChange={(event) => setPassword(event.target.value)}
             required
@@ -69,7 +70,7 @@ export function LoginPage() {
           />
         </label>
 
-        {error && <p className="form-error">{error}</p>}
+        {error && <p className="form-error" role="alert">{error}</p>}
 
         <Button disabled={isSubmitting} type="submit">
           <LogIn aria-hidden="true" size={18} />

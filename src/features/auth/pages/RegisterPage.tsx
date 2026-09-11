@@ -36,21 +36,21 @@ export function RegisterPage() {
 
   return (
     <AuthFormShell
-      description="Create your account before setting up your first personal money space."
-      eyebrow="Start clean"
+      description="A little less guesswork starts here. Create an account and make your first money space."
+      eyebrow="Start something good"
       footer={
         <span>
           Already have an account? <Link to={routes.login}>Log in</Link>
         </span>
       }
-      supportPoints={['Start with one simple space', 'Grow into shared or business tracking later']}
-      title="Create account"
+      title="Make room for more."
     >
       <form className="auth-form" onSubmit={handleSubmit}>
         <label className="field-group">
           Email
           <Input
             autoComplete="email"
+            placeholder="you@example.com"
             onChange={(event) => setEmail(event.target.value)}
             required
             type="email"
@@ -62,15 +62,18 @@ export function RegisterPage() {
           Password
           <PasswordInput
             autoComplete="new-password"
+            placeholder="Create your password"
+            aria-describedby="register-password-hint"
             minLength={6}
             onChange={(event) => setPassword(event.target.value)}
             required
             value={password}
           />
+          <span className="field-helper" id="register-password-hint">Use at least 6 characters.</span>
         </label>
 
-        {error && <p className="form-error">{error}</p>}
-        {message && <p className="form-success">{message}</p>}
+        {error && <p className="form-error" role="alert">{error}</p>}
+        {message && <p className="form-success" role="status">{message}</p>}
 
         <Button disabled={isSubmitting} type="submit">
           <UserPlus aria-hidden="true" size={18} />
